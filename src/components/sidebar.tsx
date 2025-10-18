@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/contexts/sidebar-context'
 import { Logo } from '@/components/logo'
+import { useLanguage } from '@/contexts/language-context'
 
 interface SidebarProps {
   user: {
@@ -34,30 +35,30 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    title: 'แดชบอร์ด',
+    title: 'nav.dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
   },
   {
-    title: 'จัดการผู้ใช้',
+    title: 'nav.users',
     href: '/admin/users',
     icon: Users,
     adminOnly: true,
   },
   {
-    title: 'ผู้ใช้ออนไลน์',
+    title: 'nav.sessions',
     href: '/admin/sessions',
     icon: UserCircle,
     adminOnly: true,
   },
   {
-    title: 'บันทึกกิจกรรม',
+    title: 'nav.activity',
     href: '/admin/activity-logs',
     icon: Activity,
     adminOnly: true,
   },
   {
-    title: 'ตั้งค่า',
+    title: 'nav.settings',
     href: '/settings',
     icon: Settings,
   },
@@ -66,6 +67,7 @@ const navItems: NavItem[] = [
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
   const { isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen } = useSidebar()
+  const { t } = useLanguage()
 
   const filteredNavItems = navItems.filter(
     (item) => !item.adminOnly || user.role === 'ADMIN'
@@ -88,7 +90,7 @@ export function Sidebar({ user }: SidebarProps) {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-light truncate text-foreground">{user.username}</p>
               <p className="text-xs font-light text-foreground/40 mt-0.5">
-                {user.role === 'ADMIN' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}
+                {user.role === 'ADMIN' ? t('user.role.admin') : t('user.role.staff')}
               </p>
             </div>
           )}
@@ -129,10 +131,10 @@ export function Sidebar({ user }: SidebarProps) {
                     ? 'text-primary bg-primary/10' 
                     : 'text-foreground/60'
                 )}
-                title={isCollapsed ? item.title : undefined}
+                title={isCollapsed ? t(item.title) : undefined}
               >
                 <Icon className="h-4 w-4" strokeWidth={1.5} />
-                {!isCollapsed && <span>{item.title}</span>}
+                {!isCollapsed && <span>{t(item.title)}</span>}
               </button>
             </Link>
           )

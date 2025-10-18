@@ -1,4 +1,7 @@
+'use client'
+
 import { Shield } from 'lucide-react'
+import { useLanguage } from '@/contexts/language-context'
 
 interface LogoProps {
   collapsed?: boolean
@@ -6,6 +9,8 @@ interface LogoProps {
 }
 
 export function Logo({ collapsed = false, className = '' }: LogoProps) {
+  const { t } = useLanguage()
+  
   if (collapsed) {
     return (
       <div className={`flex items-center justify-center ${className}`}>
@@ -29,7 +34,7 @@ export function Logo({ collapsed = false, className = '' }: LogoProps) {
           170sa System
         </span>
         <span className="text-[10px] font-light text-foreground/40 tracking-wider uppercase">
-          Admin Panel
+          {t('logo.subtitle')}
         </span>
       </div>
     </div>

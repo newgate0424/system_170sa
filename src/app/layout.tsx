@@ -19,6 +19,7 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { LanguageProvider } from "@/contexts/language-context";
 
 // Force dynamic rendering for all pages (ใช้ cookies สำหรับ authentication)
 export const dynamic = 'force-dynamic'
@@ -83,12 +84,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ThemeApplier />
-          <LoadingProvider>
-            <LayoutWrapper>
-              {children}
-            </LayoutWrapper>
-          </LoadingProvider>
+          <LanguageProvider>
+            <ThemeApplier />
+            <LoadingProvider>
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
+            </LoadingProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

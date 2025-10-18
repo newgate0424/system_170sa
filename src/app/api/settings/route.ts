@@ -14,6 +14,7 @@ const updateSettingsSchema = z.object({
   fontSize: z.string().optional(),
   customFontSize: z.number().optional(),
   fontFamily: z.string().optional(),
+  language: z.string().optional(),
 })
 
 // GET /api/settings - Get user settings
@@ -39,6 +40,7 @@ export async function GET() {
           fontSize: 'medium',
           customFontSize: null,
           fontFamily: 'inter',
+          language: 'th',
         },
       })
     }

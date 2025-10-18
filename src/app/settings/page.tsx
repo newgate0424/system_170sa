@@ -13,9 +13,10 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import { Palette, Type, Eye, Lock, Save, Check } from 'lucide-react'
+import { Palette, Type, Eye, Lock, Save, Check, Sun, Moon, Monitor } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { LoadingScreen } from '@/components/loading-screen'
+import { useLanguage } from '@/contexts/language-context'
 
 const colors = [
   { name: 'สีน้ำเงิน', value: 'blue', hex: '#3b82f6' },
@@ -73,6 +74,7 @@ const fontSizes = [
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
+  const { t } = useLanguage()
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -86,6 +88,7 @@ export default function SettingsPage() {
     customGradientEnd: '#fed6e3',
     fontFamily: 'inter',
     fontSize: 'medium',
+    language: 'th',
   })
 
   const [passwordForm, setPasswordForm] = useState({
@@ -97,11 +100,21 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchSettings()
     
+    // Listen for language changes from LanguageContext
+    const handleLanguageChange = (event: CustomEvent) => {
+      if (event.detail && (event.detail === 'th' || event.detail === 'en')) {
+        setSettings(prev => ({ ...prev, language: event.detail }))
+      }
+    }
+    
+    window.addEventListener('languageChanged', handleLanguageChange as EventListener)
+    
     // Cleanup timeout on unmount
     return () => {
       if (saveTimeout) {
         clearTimeout(saveTimeout)
       }
+      window.removeEventListener('languageChanged', handleLanguageChange as EventListener)
     }
   }, [])
 
@@ -146,6 +159,10 @@ export default function SettingsPage() {
     try {
       const res = await fetch('/api/settings')
       const data = await res.json()
+      
+      // Load language from localStorage first
+      const savedLanguage = localStorage.getItem('language') || 'th'
+      
       if (data.settings) {
         const loadedSettings = {
           primaryColor: data.settings.primaryColor || 'blue',
@@ -156,13 +173,20 @@ export default function SettingsPage() {
           customGradientEnd: data.settings.customGradientEnd || '#fed6e3',
           fontFamily: data.settings.fontFamily || 'inter',
           fontSize: data.settings.fontSize || 'medium',
+          language: data.settings.language || savedLanguage,
         }
         setSettings(loadedSettings)
         // Apply settings
         applyThemeSettings(loadedSettings)
+      } else {
+        // No settings from server, use localStorage language
+        setSettings(prev => ({ ...prev, language: savedLanguage }))
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error)
+      // On error, load language from localStorage
+      const savedLanguage = localStorage.getItem('language') || 'th'
+      setSettings(prev => ({ ...prev, language: savedLanguage }))
     } finally {
       setIsLoading(false)
     }
@@ -174,6 +198,11 @@ export default function SettingsPage() {
     // เช็คว่าอยู่ใน dark mode หรือไม่
     const isDarkMode = document.documentElement.classList.contains('dark')
     console.log('🌙 Dark mode:', isDarkMode)
+    
+    // Apply language to localStorage
+    if (settings.language) {
+      localStorage.setItem('language', settings.language)
+    }
     
     if (settings.primaryColor) {
       if (settings.primaryColor === 'custom' && settings.customPrimaryColor) {
@@ -268,6 +297,13 @@ export default function SettingsPage() {
     const newSettings = { ...settings, [key]: value }
     setSettings(newSettings)
     
+    // If language changed, trigger immediate update
+    if (key === 'language') {
+      localStorage.setItem('language', value)
+      // Broadcast to all components
+      window.dispatchEvent(new CustomEvent('languageChanged', { detail: value }))
+    }
+    
     // Apply immediately (ให้เห็นทันที) - force sync
     requestAnimationFrame(() => {
       applyThemeSettings(newSettings)
@@ -353,7 +389,7 @@ export default function SettingsPage() {
   }
 
   if (isLoading) {
-    return <LoadingScreen message="กำลังโหลดข้อมูล..." />
+    return <LoadingScreen message={t('common.loading')} />
   }
 
   return (
@@ -364,52 +400,73 @@ export default function SettingsPage() {
           <div className="flex items-center space-x-2">
             <Palette className="h-5 w-5" />
             <div>
-              <CardTitle>รูปลักษณ์</CardTitle>
-              <CardDescription>ปรับแต่งธีม สี และฟอนต์ตามความชอบ</CardDescription>
+              <CardTitle>{t('settings.appearance')}</CardTitle>
+              <CardDescription>{t('settings.appearance.desc')}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Theme Mode */}
+          {/* Theme Mode - Compact */}
           <div className="space-y-2">
-            <Label>โหมดธีม</Label>
-            <div className="flex items-center space-x-4">
-              <Button
-                variant={theme === 'light' ? 'default' : 'outline'}
+            <Label>{t('settings.theme')}</Label>
+            <div className="flex items-center gap-2">
+              <button
                 onClick={() => {
                   setTheme('light')
-                  // ส่ง event เพื่อบอก ThemeApplier
                   setTimeout(() => {
                     applyThemeSettings(settings)
                     window.dispatchEvent(new CustomEvent('themeChanged', { detail: 'light' }))
                   }, 100)
                 }}
-                className="flex-1"
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                  theme === 'light' 
+                    ? 'bg-primary text-primary-foreground border-primary' 
+                    : 'bg-background hover:bg-muted border-border'
+                }`}
               >
-                <Eye className="mr-2 h-4 w-4" />
-                โหมดสว่าง
-              </Button>
-              <Button
-                variant={theme === 'dark' ? 'default' : 'outline'}
+                <Sun className="h-3.5 w-3.5" />
+                <span>{t('settings.theme.light')}</span>
+              </button>
+              <button
                 onClick={() => {
                   setTheme('dark')
-                  // ส่ง event เพื่อบอก ThemeApplier
                   setTimeout(() => {
                     applyThemeSettings(settings)
                     window.dispatchEvent(new CustomEvent('themeChanged', { detail: 'dark' }))
                   }, 100)
                 }}
-                className="flex-1"
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                  theme === 'dark' 
+                    ? 'bg-primary text-primary-foreground border-primary' 
+                    : 'bg-background hover:bg-muted border-border'
+                }`}
               >
-                <Eye className="mr-2 h-4 w-4" />
-                โหมดมืด
-              </Button>
+                <Moon className="h-3.5 w-3.5" />
+                <span>{t('settings.theme.dark')}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setTheme('system')
+                  setTimeout(() => {
+                    applyThemeSettings(settings)
+                    window.dispatchEvent(new CustomEvent('themeChanged', { detail: 'system' }))
+                  }, 100)
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                  theme === 'system' 
+                    ? 'bg-primary text-primary-foreground border-primary' 
+                    : 'bg-background hover:bg-muted border-border'
+                }`}
+              >
+                <Monitor className="h-3.5 w-3.5" />
+                <span>{t('settings.theme.system')}</span>
+              </button>
             </div>
           </div>
 
           {/* Primary Color */}
           <div className="space-y-3">
-            <Label>สีหลัก</Label>
+            <Label>{t('settings.primaryColor')}</Label>
             <div className="flex flex-wrap gap-2">
               {colors.map((color) => (
                 <button
@@ -449,7 +506,7 @@ export default function SettingsPage() {
             {settings.primaryColor === 'custom' && (
               <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                 <Label htmlFor="customPrimaryColor" className="text-sm whitespace-nowrap">
-                  เลือกสี:
+                  {t('settings.primaryColor.selectColor')}:
                 </Label>
                 <Input
                   id="customPrimaryColor"
@@ -469,15 +526,15 @@ export default function SettingsPage() {
             )}
             <p className="text-sm text-muted-foreground">
               {settings.primaryColor === 'custom' 
-                ? `สีกำหนดเอง: ${settings.customPrimaryColor}`
-                : `สีที่เลือก: ${colors.find((c) => c.value === settings.primaryColor)?.name}`
+                ? `${t('settings.primaryColor.custom')}: ${settings.customPrimaryColor}`
+                : `${t('settings.primaryColor.selected')}: ${colors.find((c) => c.value === settings.primaryColor)?.name}`
               }
             </p>
           </div>
 
           {/* Background Gradient */}
           <div className="space-y-3">
-            <Label>พื้นหลังแบบกราเดี้ยน</Label>
+            <Label>{t('settings.background')}</Label>
             <div className="flex flex-wrap gap-2">
               {backgroundColors.map((color) => (
                 <button
@@ -504,11 +561,11 @@ export default function SettingsPage() {
             </div>
             {settings.backgroundColor === 'custom' && (
               <div className="space-y-3 p-4 bg-muted rounded-lg">
-                <Label className="text-sm font-semibold">กำหนดกราเดี้ยนเอง</Label>
+                <Label className="text-sm font-semibold">{t('settings.background.custom')}</Label>
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
                     <Label htmlFor="customGradientStart" className="text-xs text-muted-foreground">
-                      สีเริ่มต้น
+                      {t('settings.background.startColor')}
                     </Label>
                     <div className="flex items-center gap-2 mt-1">
                       <Input
@@ -529,7 +586,7 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex-1">
                     <Label htmlFor="customGradientEnd" className="text-xs text-muted-foreground">
-                      สีสิ้นสุด
+                      {t('settings.background.endColor')}
                     </Label>
                     <div className="flex items-center gap-2 mt-1">
                       <Input
@@ -559,17 +616,17 @@ export default function SettingsPage() {
             )}
             <p className="text-sm text-muted-foreground">
               {settings.backgroundColor === 'custom'
-                ? `กราเดี้ยนกำหนดเอง: ${settings.customGradientStart} → ${settings.customGradientEnd}`
-                : `พื้นหลังที่เลือก: ${backgroundColors.find((c) => c.value === settings.backgroundColor)?.name}`
+                ? `${t('settings.background.customGradient')}: ${settings.customGradientStart} → ${settings.customGradientEnd}`
+                : `${t('settings.background.selected')}: ${backgroundColors.find((c) => c.value === settings.backgroundColor)?.name}`
               }
             </p>
           </div>
 
-          {/* Font Family & Font Size - 2 Columns */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Font Family & Font Size & Language - 3 Columns */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Font Family */}
             <div className="space-y-3">
-              <Label htmlFor="font">แบบอักษร ({fonts.length} แบบ)</Label>
+              <Label htmlFor="font">{t('settings.font')} ({fonts.length} {t('settings.font.count')})</Label>
               <Select
                 value={settings.fontFamily}
                 onValueChange={(value) => handleSettingChange('fontFamily', value)}
@@ -579,7 +636,7 @@ export default function SettingsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                    ฟอนต์ภาษาไทย
+                    {t('settings.font.thai')}
                   </div>
                   {fonts.filter(f => f.category === 'ไทย').map((font) => (
                     <SelectItem 
@@ -591,7 +648,7 @@ export default function SettingsPage() {
                     </SelectItem>
                   ))}
                   <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-2">
-                    ฟอนต์สากล
+                    {t('settings.font.international')}
                   </div>
                   {fonts.filter(f => f.category === 'สากล').map((font) => (
                     <SelectItem 
@@ -605,13 +662,13 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                ฟอนต์ที่เลือก: {fonts.find((f) => f.value === settings.fontFamily)?.name}
+                {t('settings.font.selected')}: {fonts.find((f) => f.value === settings.fontFamily)?.name}
               </p>
             </div>
 
             {/* Font Size */}
             <div className="space-y-3">
-              <Label htmlFor="fontSize">ขนาดตัวอักษร</Label>
+              <Label htmlFor="fontSize">{t('settings.fontSize')}</Label>
               <Select
                 value={settings.fontSize}
                 onValueChange={(value) => handleSettingChange('fontSize', value)}
@@ -628,23 +685,53 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                ขนาดที่เลือก: {fontSizes.find((s) => s.value === settings.fontSize)?.name}
+                {t('settings.fontSize.selected')}: {fontSizes.find((s) => s.value === settings.fontSize)?.name}
+              </p>
+            </div>
+
+            {/* Language */}
+            <div className="space-y-3">
+              <Label htmlFor="language">{t('settings.language')}</Label>
+              <Select
+                value={settings.language || 'th'}
+                onValueChange={(value) => handleSettingChange('language', value)}
+              >
+                <SelectTrigger id="language">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="th">
+                    <div className="flex items-center gap-2">
+                      <span>🇹🇭</span>
+                      <span>ไทย</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="en">
+                    <div className="flex items-center gap-2">
+                      <span>🇬🇧</span>
+                      <span>English</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.language.selected')}: {settings.language === 'en' ? 'English' : 'ไทย'}
               </p>
             </div>
           </div>
 
           {/* Preview Text */}
           <div className="p-6 rounded-lg border bg-muted space-y-3">
-            <p className="text-sm font-semibold text-muted-foreground mb-3">ตัวอย่างข้อความ:</p>
+            <p className="text-sm font-semibold text-muted-foreground mb-3">{t('settings.preview')}:</p>
             <div className="space-y-2">
               <p className="text-2xl font-bold">
-                ระบบจัดการผู้ใช้งาน
+                {t('settings.preview.title')}
               </p>
               <p className="text-lg">
                 The quick brown fox jumps over the lazy dog
               </p>
               <p className="text-base">
-                การจัดการระบบผู้ใช้งานและสิทธิ์การเข้าถึง
+                {t('settings.preview.subtitle')}
               </p>
               <p className="text-sm text-muted-foreground">
                 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789
@@ -659,7 +746,7 @@ export default function SettingsPage() {
             <div className="flex items-center space-x-2">
               <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
               <span className="text-sm text-green-700 dark:text-green-300">
-                การตั้งค่าจะถูกบันทึกอัตโนมัติทันทีที่เปลี่ยนแปลง
+                {t('settings.autoSave')}
               </span>
             </div>
           </div>
@@ -672,15 +759,15 @@ export default function SettingsPage() {
           <div className="flex items-center space-x-2">
             <Lock className="h-5 w-5" />
             <div>
-              <CardTitle>เปลี่ยนรหัสผ่าน</CardTitle>
-              <CardDescription>เปลี่ยนรหัสผ่านของคุณเพื่อความปลอดภัย</CardDescription>
+              <CardTitle>{t('settings.password')}</CardTitle>
+              <CardDescription>{t('settings.password.desc')}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="currentPassword">รหัสผ่านปัจจุบัน</Label>
+              <Label htmlFor="currentPassword">{t('settings.password.current')}</Label>
               <Input
                 id="currentPassword"
                 type="password"
@@ -693,7 +780,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="newPassword">รหัสผ่านใหม่</Label>
+              <Label htmlFor="newPassword">{t('settings.password.new')}</Label>
               <Input
                 id="newPassword"
                 type="password"
@@ -706,7 +793,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">ยืนยันรหัสผ่านใหม่</Label>
+              <Label htmlFor="confirmPassword">{t('settings.password.confirm')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -720,7 +807,7 @@ export default function SettingsPage() {
 
             <Button type="submit" className="w-full">
               <Lock className="mr-2 h-4 w-4" />
-              เปลี่ยนรหัสผ่าน
+              {t('settings.password.button')}
             </Button>
           </form>
         </CardContent>

@@ -63,6 +63,7 @@ model UserSettings {
   fontSize               String   @default("medium")
   customFontSize         Int?
   fontFamily             String   @default("inter")
+  language               String   @default("th")
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
   
