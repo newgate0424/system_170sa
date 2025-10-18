@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/contexts/sidebar-context'
+import { Logo } from '@/components/logo'
 
 interface SidebarProps {
   user: {
@@ -71,61 +72,39 @@ export function Sidebar({ user }: SidebarProps) {
   )
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-card border-r">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="flex items-center justify-center p-4">
-        {!isCollapsed && (
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Shield className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold">170sa System</span>
-              <span className="text-xs text-muted-foreground">v1.0.0</span>
-            </div>
-          </div>
-        )}
-        {isCollapsed && (
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Shield className="w-5 h-5 text-primary-foreground" />
-          </div>
-        )}
+      <div className="flex items-center justify-center py-6 px-4">
+        <Logo collapsed={isCollapsed} />
       </div>
 
       {/* User Profile */}
-      <div className={cn("p-4", isCollapsed && "flex justify-center")}>
-        <div className={cn("flex items-center", isCollapsed ? "flex-col space-y-2" : "space-x-3")}>
+      <div className={cn("px-6 pb-8", isCollapsed && "flex justify-center px-3")}>
+        <div className={cn("flex items-center gap-3", isCollapsed && "flex-col gap-2")}>
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <UserCircle className="w-6 h-6 text-primary" />
+            <UserCircle className="w-5 h-5 text-primary" strokeWidth={1.5} />
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.username}</p>
-              <div className="flex items-center space-x-1">
-                {user.role === 'ADMIN' ? (
-                  <Shield className="w-3 h-3 text-primary" />
-                ) : (
-                  <Clock className="w-3 h-3 text-muted-foreground" />
-                )}
-                <p className="text-xs text-muted-foreground">
-                  {user.role === 'ADMIN' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}
-                </p>
-              </div>
+              <p className="text-sm font-light truncate text-foreground">{user.username}</p>
+              <p className="text-xs font-light text-foreground/40 mt-0.5">
+                {user.role === 'ADMIN' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}
+              </p>
             </div>
           )}
         </div>
         {!isCollapsed && user.teams.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1">
+          <div className="mt-4 flex flex-wrap gap-2">
             {user.teams.slice(0, 3).map((team) => (
               <span
                 key={team}
-                className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary"
+                className="px-3 py-1 text-xs font-light bg-primary/10 text-primary rounded-full"
               >
                 {team}
               </span>
             ))}
             {user.teams.length > 3 && (
-              <span className="px-2 py-0.5 text-xs rounded-full bg-muted text-muted-foreground">
+              <span className="px-3 py-1 text-xs font-light bg-primary/5 text-foreground/40 rounded-full">
                 +{user.teams.length - 3}
               </span>
             )}
@@ -134,25 +113,27 @@ export function Sidebar({ user }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className={cn("flex-1 space-y-1 overflow-y-auto border-t", isCollapsed ? "p-2" : "p-4")}>
+      <nav className={cn("flex-1 space-y-1 overflow-y-auto", isCollapsed ? "px-3" : "px-6")}>
         {filteredNavItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
 
           return (
             <Link key={item.href} href={item.href}>
-              <Button
-                variant={isActive ? 'default' : 'ghost'}
+              <button
                 className={cn(
-                  'w-full',
-                  isCollapsed ? 'justify-center px-0' : 'justify-start px-3',
-                  isActive && 'shadow-sm'
+                  'w-full flex items-center gap-4 px-4 py-3 text-sm font-light transition-colors rounded-lg',
+                  'hover:bg-primary/10',
+                  isCollapsed && 'justify-center px-0',
+                  isActive 
+                    ? 'text-primary bg-primary/10' 
+                    : 'text-foreground/60'
                 )}
                 title={isCollapsed ? item.title : undefined}
               >
-                <Icon className={cn('h-4 w-4', !isCollapsed && 'mr-3')} />
+                <Icon className="h-4 w-4" strokeWidth={1.5} />
                 {!isCollapsed && <span>{item.title}</span>}
-              </Button>
+              </button>
             </Link>
           )
         })}

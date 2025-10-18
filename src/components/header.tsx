@@ -69,86 +69,61 @@ export function Header({ user, sidebarCollapsed }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center px-4 gap-4">
+    <header className="sticky top-0 z-30 bg-background">
+      <div className="flex h-16 items-center px-8 gap-6">
         {/* Sidebar Toggle Button */}
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           title={isCollapsed ? 'เปิด Sidebar' : 'ปิด Sidebar'}
-          className="hidden lg:flex"
+          className="hidden lg:flex items-center justify-center w-8 h-8 text-foreground/40 hover:text-primary transition-colors"
         >
-          <Menu className="h-5 w-5" />
-        </Button>
+          <Menu className="h-4 w-4" strokeWidth={1.5} />
+        </button>
 
-        {/* Breadcrumbs */}
+        {/* Page Title */}
         <div className="flex-1">
-          <div className="flex items-center space-x-2 text-sm">
-            <span className="text-muted-foreground">หน้าหลัก</span>
-            {breadcrumbs.map((crumb, index) => (
-              <div key={crumb.path} className="flex items-center space-x-2">
-                <span className="text-muted-foreground">/</span>
-                <span
-                  className={
-                    index === breadcrumbs.length - 1
-                      ? 'font-medium text-foreground'
-                      : 'text-muted-foreground'
-                  }
-                >
-                  {crumb.name}
-                </span>
-              </div>
-            ))}
-          </div>
-          <h1 className="text-2xl font-bold mt-1">{pageName}</h1>
+          <h1 className="text-base font-light text-foreground/80 tracking-wide">{pageName}</h1>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-6">
           {/* Theme Toggle */}
           {mounted && (
-            <Button
-              variant="ghost"
-              size="icon"
+            <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               title={theme === 'dark' ? 'โหมดสว่าง' : 'โหมดมืด'}
+              className="text-foreground/40 hover:text-primary transition-colors"
             >
               {theme === 'dark' ? (
-                <Sun className="h-5 w-5" />
+                <Sun className="h-4 w-4" strokeWidth={1.5} />
               ) : (
-                <Moon className="h-5 w-5" />
+                <Moon className="h-4 w-4" strokeWidth={1.5} />
               )}
-            </Button>
+            </button>
           )}
 
           {/* User Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-2 h-auto py-2 px-3">
+              <button className="flex items-center gap-3 text-foreground/60 hover:text-primary transition-colors">
+                <span className="hidden sm:block text-sm font-light">{user.username}</span>
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-light">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium">{user.username}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {user.role === 'ADMIN' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}
-                  </p>
-                </div>
-              </Button>
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>บัญชีของฉัน</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push('/settings')}>
-                <Settings className="mr-2 h-4 w-4" />
+            <DropdownMenuContent align="end" className="w-48 border-0 shadow-lg">
+              <DropdownMenuLabel className="font-light text-foreground/60">บัญชีของฉัน</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-foreground/5" />
+              <DropdownMenuItem onClick={() => router.push('/settings')} className="font-light hover:bg-primary/10 hover:text-primary">
+                <Settings className="mr-2 h-3.5 w-3.5" strokeWidth={1.5} />
                 <span>ตั้งค่า</span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
+              <DropdownMenuSeparator className="bg-foreground/5" />
+              <DropdownMenuItem onClick={handleLogout} className="font-light text-destructive focus:text-destructive hover:bg-destructive/10">
+                <LogOut className="mr-2 h-3.5 w-3.5" strokeWidth={1.5} />
                 <span>ออกจากระบบ</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
