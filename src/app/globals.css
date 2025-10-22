@@ -64,9 +64,16 @@
     @apply border-border;
   }
   
-  /* บังคับให้ html และ body ไม่มี background default */
+  /* ตั้งค่า background default ให้ html และ body */
   html, body {
-    background: transparent !important;
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%) !important;
+    background-attachment: fixed !important;
+    min-height: 100vh !important;
+  }
+  
+  /* Override เมื่อมี data-bg-color attribute */
+  html[data-bg-color], body {
+    background: inherit;
   }
   
   /* ปรับสีข้อความตามธีม */
@@ -76,6 +83,9 @@
   
   html.dark {
     color: hsl(var(--foreground));
+    /* Overlay สีเข้มสำหรับ dark mode */
+    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), linear-gradient(135deg, #a8edea 0%, #fed6e3 100%) !important;
+    background-attachment: fixed !important;
   }
   
   /* ให้ wrapper ต่างๆ เป็น transparent */

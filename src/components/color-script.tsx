@@ -55,22 +55,34 @@ export function ColorScript() {
         const settings = JSON.parse(localStorage.getItem('userSettings') || '{}')
         const root = document.documentElement
         
-        if (settings.primaryColor) {
-          root.setAttribute('data-color', settings.primaryColor)
-        }
+        // ตั้งค่า default ถ้ายังไม่มี settings
+        const primaryColor = settings.primaryColor || 'blue'
+        const backgroundColor = settings.backgroundColor || 'gradient-mint-pink'
+        const fontSize = settings.fontSize || 'medium'
+        const fontFamily = settings.fontFamily || 'inter'
         
-        if (settings.backgroundColor) {
-          root.setAttribute('data-bg-color', settings.backgroundColor)
-        }
+        root.setAttribute('data-color', primaryColor)
+        root.setAttribute('data-bg-color', backgroundColor)
+        root.setAttribute('data-font-size', fontSize)
+        root.setAttribute('data-font', fontFamily)
         
-        if (settings.fontSize) {
-          root.setAttribute('data-font-size', settings.fontSize)
+        // บันทึก default settings ถ้ายังไม่มี
+        if (!localStorage.getItem('userSettings')) {
+          localStorage.setItem('userSettings', JSON.stringify({
+            primaryColor: primaryColor,
+            backgroundColor: backgroundColor,
+            fontSize: fontSize,
+            fontFamily: fontFamily
+          }))
         }
-        
-        if (settings.fontFamily) {
-          root.setAttribute('data-font', settings.fontFamily)
-        }
-      } catch (e) {}
+      } catch (e) {
+        // ถ้ามีข้อผิดพลาด ให้ตั้งค่า default
+        const root = document.documentElement
+        root.setAttribute('data-color', 'blue')
+        root.setAttribute('data-bg-color', 'gradient-mint-pink')
+        root.setAttribute('data-font-size', 'medium')
+        root.setAttribute('data-font', 'inter')
+      }
     })()
   `
 

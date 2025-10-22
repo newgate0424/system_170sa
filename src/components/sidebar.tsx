@@ -12,6 +12,8 @@ import {
   UserCircle,
   Clock,
   Menu,
+  FileSpreadsheet,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/contexts/sidebar-context'
@@ -38,6 +40,17 @@ const navItems: NavItem[] = [
     title: 'nav.dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    title: 'Overview',
+    href: '/overview',
+    icon: FileSpreadsheet,
+  },
+  {
+    title: 'Sync Data',
+    href: '/sync',
+    icon: RefreshCw,
+    adminOnly: true,
   },
   {
     title: 'nav.users',

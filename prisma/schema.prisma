@@ -105,3 +105,74 @@ model LoginAttempt {
   @@index([attemptAt])
   @@index([success])
 }
+
+enum ConditionType {
+  GREATER
+  LESS
+  BETWEEN
+}
+
+enum UnitType {
+  NUMBER
+  PERCENT
+}
+
+model ColorRule {
+  id            String        @id @default(cuid())
+  team          String        // ชื่อทีม หรือ "ทั้งหมด" สำหรับ default
+  columnName    String        // ชื่อ column ที่ต้องการใส่สี
+  conditionType ConditionType // ประเภทเงื่อนไข: GREATER, LESS, BETWEEN
+  unitType      UnitType      // หน่วยที่ใช้เปรียบเทียบ: NUMBER, PERCENT
+  value1        Float         // ค่าสำหรับเปรียบเทียบ (หรือค่าต่ำสุดถ้าเป็น between)
+  value2        Float?        // ค่าสูงสุด (ใช้เฉพาะเงื่อนไข between)
+  color         String        @default("#ef4444") // สีพื้นหลังในรูปแบบ hex
+  textColor     String        @default("#ffffff") // สีข้อความในรูปแบบ hex
+  isBold        Boolean       @default(false) // ใช้ตัวหนาหรือไม่
+  priority      Int           @default(0) // ลำดับความสำคัญ (เลขน้อย = ตรวจสอบก่อน)
+  isActive      Boolean       @default(true) // เปิดใช้งานหรือไม่
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  @@index([team, columnName])
+  @@index([isActive])
+  @@index([priority])
+}
+
+// Model สำหรับเก็บข้อมูล Gateway จาก Google Sheets
+model GatewayData {
+  id                        String   @id @default(cuid())
+  team                      String   // ทีม
+  adser                     String   // ชื่อพนักงาน
+  date                      String   // วันที่ในรูปแบบ dd/mm/yyyy
+  totalMessages             String   @default("") // ยอดทัก
+  messagesMeta              String   @default("") // ยอดทัก(Meta)
+  lostMessages              String   @default("") // ยอดเสีย
+  netMessages               String   @default("") // ยอดสุทธิ
+  plannedSpendPerDay        String   @default("") // แผนงบ
+  spend                     String   @default("") // ค่าใช้จ่าย
+  plannedMessages           String   @default("") // แผนทัก
+  topUp                     String   @default("") // เติม
+  newPlayerRevenueAdser     String   @default("") // ยอดเล่นใหม่(adser)
+  newPlayerRevenueTeam      String   @default("") // ยอดเล่นใหม่(team)
+  pageBlocks7Days           String   @default("") // บล็อกเพจ 7 วัน
+  pageBlocks30Days          String   @default("") // บล็อกเพจ 30 วัน
+  silent                    String   @default("") // ทักเงียบ
+  duplicate                 String   @default("") // ทักซ้ำ
+  hasUser                   String   @default("") // มียุส
+  spam                      String   @default("") // ก่อกวน
+  blocked                   String   @default("") // บล็อก
+  under18                   String   @default("") // เด็ก
+  over50                    String   @default("") // อายุเกิน
+  foreign                   String   @default("") // ต่างชาติ
+  sheetName                 String   // ชื่อ sheet ต้นทาง (ชื่อทีม)
+  syncedAt                  DateTime @default(now()) // เวลาที่ sync
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  
+  @@unique([team, adser, date, sheetName]) // ป้องกันข้อมูลซ้ำ
+  @@index([team])
+  @@index([adser])
+  @@index([date])
+  @@index([sheetName])
+  @@index([syncedAt])
+}

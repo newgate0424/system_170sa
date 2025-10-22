@@ -17,7 +17,7 @@ function LayoutContent({ children, user }: { children: React.ReactNode; user: an
   const { isCollapsed } = useSidebar()
 
   return (
-    <div className="min-h-screen">
+    <div className="h-screen overflow-hidden" style={{ background: 'transparent' }}>
       {/* ไม่ใช้ bg-background เพื่อให้ gradient ทำงาน */}
       {/* Sidebar */}
       <Sidebar
@@ -31,7 +31,7 @@ function LayoutContent({ children, user }: { children: React.ReactNode; user: an
       {/* Main Content Area - adjusts based on sidebar state */}
       <div
         className={cn(
-          'transition-all duration-300',
+          'transition-all duration-300 h-full flex flex-col',
           isCollapsed ? 'lg:pl-16' : 'lg:pl-64'
         )}
       >
@@ -45,7 +45,7 @@ function LayoutContent({ children, user }: { children: React.ReactNode; user: an
         />
 
         {/* Page Content */}
-        <main className="p-6">
+        <main className="p-6 flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

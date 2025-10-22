@@ -37,7 +37,19 @@ export function ThemeApplier() {
         const settings = JSON.parse(savedSettings)
         applyThemeSettings(settings)
       } else {
-        // ถ้าไม่มี settings ใน localStorage ให้โหลดจาก server
+        // ถ้าไม่มี settings ใน localStorage ให้ใช้ค่า default และโหลดจาก server
+        const defaultSettings = {
+          primaryColor: 'blue',
+          customPrimaryColor: '#3b82f6',
+          backgroundColor: 'gradient-mint-pink',
+          customGradientStart: '#a8edea',
+          customGradientEnd: '#fed6e3',
+          fontFamily: 'inter',
+          fontSize: 'medium',
+        }
+        // Apply default ก่อน
+        applyThemeSettings(defaultSettings)
+        // จากนั้นค่อยโหลดจาก server
         fetchSettings()
       }
     }
@@ -61,6 +73,17 @@ export function ThemeApplier() {
         }
       } catch (error) {
         console.error('Failed to fetch settings:', error)
+        // ถ้าโหลดจาก server ไม่สำเร็จ ให้บันทึก default ลง localStorage
+        const defaultSettings = {
+          primaryColor: 'blue',
+          customPrimaryColor: '#3b82f6',
+          backgroundColor: 'gradient-mint-pink',
+          customGradientStart: '#a8edea',
+          customGradientEnd: '#fed6e3',
+          fontFamily: 'inter',
+          fontSize: 'medium',
+        }
+        localStorage.setItem('userSettings', JSON.stringify(defaultSettings))
       }
     }
 

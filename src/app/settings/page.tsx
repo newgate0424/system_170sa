@@ -48,6 +48,7 @@ const backgroundColors = [
 ]
 
 const fonts = [
+  // International Fonts
   { name: 'Inter', value: 'inter', category: 'สากล' },
   { name: 'Roboto', value: 'roboto', category: 'สากล' },
   { name: 'Open Sans', value: 'open-sans', category: 'สากล' },
@@ -56,6 +57,19 @@ const fonts = [
   { name: 'Poppins', value: 'poppins', category: 'สากล' },
   { name: 'Nunito', value: 'nunito', category: 'สากล' },
   { name: 'Ubuntu', value: 'ubuntu', category: 'สากล' },
+  { name: 'Raleway', value: 'raleway', category: 'สากล' },
+  { name: 'Playfair Display', value: 'playfair-display', category: 'สากล' },
+  { name: 'Merriweather', value: 'merriweather', category: 'สากล' },
+  { name: 'PT Sans', value: 'pt-sans', category: 'สากล' },
+  { name: 'Source Sans Pro', value: 'source-sans-pro', category: 'สากล' },
+  { name: 'Work Sans', value: 'work-sans', category: 'สากล' },
+  { name: 'Rubik', value: 'rubik', category: 'สากล' },
+  { name: 'Quicksand', value: 'quicksand', category: 'สากล' },
+  { name: 'Josefin Sans', value: 'josefin-sans', category: 'สากล' },
+  { name: 'Manrope', value: 'manrope', category: 'สากล' },
+  { name: 'DM Sans', value: 'dm-sans', category: 'สากล' },
+  { name: 'Space Grotesk', value: 'space-grotesk', category: 'สากล' },
+  // Thai Fonts
   { name: 'Kanit', value: 'kanit', category: 'ไทย' },
   { name: 'Sarabun', value: 'sarabun', category: 'ไทย' },
   { name: 'Prompt', value: 'prompt', category: 'ไทย' },
@@ -636,9 +650,9 @@ export default function SettingsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                    {t('settings.font.thai')}
+                    {t('settings.font.international')}
                   </div>
-                  {fonts.filter(f => f.category === 'ไทย').map((font) => (
+                  {fonts.filter(f => f.category === 'สากล').map((font) => (
                     <SelectItem 
                       key={font.value} 
                       value={font.value}
@@ -648,9 +662,9 @@ export default function SettingsPage() {
                     </SelectItem>
                   ))}
                   <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-2">
-                    {t('settings.font.international')}
+                    {t('settings.font.thai')}
                   </div>
-                  {fonts.filter(f => f.category === 'สากล').map((font) => (
+                  {fonts.filter(f => f.category === 'ไทย').map((font) => (
                     <SelectItem 
                       key={font.value} 
                       value={font.value}

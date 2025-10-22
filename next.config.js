@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   // ปิด static export เพราะใช้ cookies และ authentication
-  output: 'standalone',
+  // output: 'standalone', // ปิดไว้ในโหมด development
   images: {
     domains: [],
   },
