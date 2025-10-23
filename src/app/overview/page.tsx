@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -146,7 +146,9 @@ export default function OverviewPage() {
         }
         
         // เก็บ role ของ user
-        setUserRole(data.user.role || 'EMPLOYEE')
+        const role = data.user.role || 'EMPLOYEE'
+        console.log('🔐 User role:', role)
+        setUserRole(role)
         setIsCheckingAuth(false)
       } catch (error) {
         console.error('Auth check failed:', error)
@@ -236,19 +238,24 @@ export default function OverviewPage() {
     if (!team) return
     
     try {
+      console.log('📥 Loading team targets for:', team)
       const res = await fetch(`/api/team-targets?team=${encodeURIComponent(team)}`)
       const data = await res.json()
       
+      console.log('📦 Received team targets:', data)
+      
       if (data && !data.error) {
-        setCurrentTargets({
+        const newTargets = {
           coverTarget: data.coverTarget || 1.0,
           cpmTarget: data.cpmTarget || 15,
           costPerTopupTarget: data.costPerTopupTarget || 100,
           exchangeRate: data.exchangeRate || 35
-        })
+        }
+        console.log('✅ Setting team targets:', newTargets)
+        setCurrentTargets(newTargets)
       }
     } catch (error) {
-      console.error('Failed to load team targets:', error)
+      console.error('❌ Failed to load team targets:', error)
     }
   }
   
@@ -258,11 +265,12 @@ export default function OverviewPage() {
       ...currentTargets,
       [field]: value
     }
-    setCurrentTargets(newTargets)
+    
+    console.log('💾 Saving team targets:', { team: teamFilter, field, value, newTargets })
     
     // บันทึกลงฐานข้อมูล
     try {
-      await fetch('/api/team-targets', {
+      const response = await fetch('/api/team-targets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -270,16 +278,24 @@ export default function OverviewPage() {
           ...newTargets
         })
       })
-      console.log('✅ Team targets saved to database')
+      const result = await response.json()
+      console.log('✅ Team targets saved to database:', result)
+      
+      // อัพเดต state ด้วยค่าที่บันทึกสำเร็จแล้ว
+      setCurrentTargets(result)
     } catch (error) {
-      console.error('Failed to save team targets:', error)
+      console.error('❌ Failed to save team targets:', error)
     }
   }
   
   // โหลดเป้าหมายเมื่อเปลี่ยนทีม
   useEffect(() => {
+    console.log('🔄 useEffect triggered:', { teamFilter, isCheckingAuth })
     if (teamFilter && !isCheckingAuth) {
+      console.log('✅ Calling loadTeamTargets for:', teamFilter)
       loadTeamTargets(teamFilter)
+    } else {
+      console.log('⏸️ Skip loading:', teamFilter ? 'Still checking auth' : 'No team selected')
     }
   }, [teamFilter, isCheckingAuth])
   
@@ -307,10 +323,11 @@ export default function OverviewPage() {
           const newRate = data.rates.THB
           setExchangeRate(newRate)
           
-          // อัปเดตค่าเรทในทีมปัจจุบัน (ถ้ามี)
-          if (teamFilter) {
-            updateTeamTarget('exchangeRate', newRate)
-          }
+          // แค่อัปเดต state อย่างเดียว ไม่บันทึกลงฐานข้อมูล
+          setCurrentTargets(prev => ({
+            ...prev,
+            exchangeRate: newRate
+          }))
           
           console.log('💱 Exchange rate updated:', newRate, 'THB per 1 USD')
         }
@@ -321,7 +338,7 @@ export default function OverviewPage() {
     fetchExchangeRate()
     const interval = setInterval(fetchExchangeRate, 3600000) // ทุก 1 ชั่วโมง
     return () => clearInterval(interval)
-  }, [teamFilter])
+  }, [])
   
   const [activeTab, setActiveTab] = useState<'team' | 'adser'>('team')
   const [adserData, setAdserData] = useState<SheetData[]>([])
@@ -452,10 +469,12 @@ export default function OverviewPage() {
         firstRow: result.data?.[0]
       })
       if (result.data && result.data.length > 0) {
+        console.log('✅ Setting data to state:', result.data.length, 'rows')
         setHeaders(result.headers || [])
         setData(result.data)
         setTeamDataCache(result.data) // Cache ข้อมูล
         setLastRefreshTime(new Date())
+        console.log('✅ Data set complete!')
         if (!silent) {
           console.log('📋 Data from Database:', result.data.length, 'rows')
           console.log('📊 Headers:', result.headers)
@@ -623,10 +642,10 @@ export default function OverviewPage() {
   }, [adserData])
   
   useEffect(() => {
-    if (activeTab === 'team') {
-      fetchData(false) // fetch ข้อมูลใหม่เมื่อ filter เปลี่ยน
+    if (activeTab === 'team' && !isCheckingAuth && currentTargets.cpmTarget > 0) {
+      fetchData(false) // fetch ข้อมูลใหม่เมื่อ filter เปลี่ยน (รอให้โหลด targets เสร็จก่อน)
     }
-  }, [teamFilter, monthFilter, yearFilter])
+  }, [teamFilter, monthFilter, yearFilter, isCheckingAuth, currentTargets.cpmTarget])
   useEffect(() => {
     if (activeTab === 'adser' && selectedAdser) {
       fetchAdserData(false) // fetch ข้อมูลใหม่เมื่อ filter เปลี่ยน
@@ -642,6 +661,16 @@ export default function OverviewPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       console.log('🔄 Auto-refreshing data silently...')
+      
+      // บันทึก scroll position ก่อน refresh
+      if (bodyScrollRef.current) {
+        const currentScrollTop = bodyScrollRef.current.scrollTop
+        const currentScrollLeft = bodyScrollRef.current.scrollLeft
+        setSavedScrollPosition(currentScrollTop)
+        setSavedScrollLeft(currentScrollLeft)
+        console.log('📍 Saved scroll position:', { top: currentScrollTop, left: currentScrollLeft })
+      }
+      
       if (activeTab === 'team') {
         fetchData(true) // silent mode
       } else if (activeTab === 'adser' && selectedAdser) {
@@ -659,6 +688,15 @@ export default function OverviewPage() {
       return
     }
     console.log('✅ Sync scroll initialized')
+    
+    // กู้คืน scroll position ถ้ามีค่าที่บันทึกไว้
+    if (savedScrollPosition > 0 || savedScrollLeft > 0) {
+      console.log('🔄 Restoring scroll position:', { top: savedScrollPosition, left: savedScrollLeft })
+      bodyScroll.scrollTop = savedScrollPosition
+      bodyScroll.scrollLeft = savedScrollLeft
+      headerScroll.scrollLeft = savedScrollLeft
+    }
+    
     const handleBodyScroll = () => {
       headerScroll.scrollLeft = bodyScroll.scrollLeft
     }
@@ -1028,7 +1066,9 @@ export default function OverviewPage() {
     }
     return style
   }
-  const calculateSummaryRow = (): { [key: string]: string } => {
+  
+  // ใช้ useMemo เพื่อคำนวณ summary row ใหม่เมื่อ displayData หรือ displayHeaders เปลี่ยน
+  const summaryRow = useMemo(() => {
     const summary: { [key: string]: string } = {}
     displayHeaders.forEach(header => {
       if (header === 'Date' || header === 'วันที่' || header === 'date') {
@@ -1110,6 +1150,16 @@ export default function OverviewPage() {
           .filter(v => !isNaN(v))
           .reduce((sum, v) => sum + v, 0)
         const cpmTarget = currentTargets.cpmTarget || 15 // ใช้เป้า CPM จากการตั้งค่า
+        
+        console.log('📊 KPI_Budget_Used calculation:', {
+          totalMessages,
+          totalSpend,
+          cpmTarget,
+          budget: totalSpend / cpmTarget,
+          percentage: totalMessages / (totalSpend / cpmTarget) * 100,
+          displayDataLength: displayData.length
+        })
+        
         if (totalSpend > 0 && cpmTarget > 0) {
           summary[header] = ((totalMessages / (totalSpend / cpmTarget)) * 100).toFixed(2) + '%'
         } else {
@@ -1227,7 +1277,8 @@ export default function OverviewPage() {
       }
     })
     return summary
-  }
+  }, [displayData, displayHeaders, displayMode, currentTargets.cpmTarget, exchangeRate])
+  
   if (isCheckingAuth) {
     return <LoadingScreen message="กำลังตรวจสอบสิทธิ์..." />
   }
@@ -1339,7 +1390,6 @@ export default function OverviewPage() {
                 <div className="pt-3 border-t space-y-3">
                   <Label className="text-sm font-medium">
                     เป้าหมายของทีม: {teamFilter}
-                    {userRole !== 'ADMIN' && <span className="text-xs text-muted-foreground ml-2">(ดูอย่างเดียว)</span>}
                   </Label>
                   
                   <div className="grid grid-cols-2 gap-2 items-center">
@@ -1874,8 +1924,7 @@ export default function OverviewPage() {
                     {}
                     <tr className="border-b-2 border-gray-900 dark:border-gray-100 bg-gray-100 dark:bg-gray-900">
                       {displayHeaders.map((header, colIndex) => {
-                        const summaryData = calculateSummaryRow()
-                        const summaryValue = summaryData[header] || '-'
+                        const summaryValue = summaryRow[header] || '-'
                         const cellStyle = getSummaryCellStyle(header, summaryValue)
                         return (
                           <th
@@ -1924,7 +1973,7 @@ export default function OverviewPage() {
                           key={rowIndex}
                           className={`border-b border-gray-100 dark:border-gray-800 transition-all duration-150 ${
                             isTodayRow
-                              ? 'bg-orange-200 dark:bg-orange-900/50 hover:bg-orange-300 dark:hover:bg-orange-900/70 font-medium' 
+                              ? 'bg-orange-300 dark:bg-orange-800/60 hover:bg-orange-400 dark:hover:bg-orange-800/80 font-semibold' 
                               : rowIndex % 2 === 0 
                                 ? 'bg-gray-50 dark:bg-gray-900/20 hover:bg-gray-100 dark:hover:bg-gray-900/40'
                                 : 'bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900/50'
