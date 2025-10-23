@@ -84,19 +84,13 @@ export default function LoginPage() {
             <Lock className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            ระบบจัดการผู้ใช้
+            170sa System
           </h1>
-          <p className="text-muted-foreground">
-            เข้าสู่ระบบเพื่อเริ่มใช้งาน
-          </p>
         </div>
 
         <Card className="shadow-2xl">
           <CardHeader>
             <CardTitle>เข้าสู่ระบบ</CardTitle>
-            <CardDescription>
-              กรุณากรอกชื่อผู้ใช้และรหัสผ่านของคุณ
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -143,10 +137,6 @@ export default function LoginPage() {
                 เข้าสู่ระบบ
               </Button>
             </form>
-
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              <p>ลืมรหัสผ่าน? ติดต่อผู้ดูแลระบบ</p>
-            </div>
           </CardContent>
         </Card>
 
