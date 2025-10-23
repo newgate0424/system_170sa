@@ -946,71 +946,24 @@ export default function OverviewPage() {
     }
     return cleanDateStr === todayStr
   }
-  const generateFullMonthData = (filteredData: SheetData[]) => {
-    // ถ้าไม่ได้เลือกเดือนและปี ให้แสดงข้อมูลที่มีทั้งหมด
-    if (!monthFilter || !yearFilter || monthFilter === 'ทั้งหมด' || yearFilter === 'ทั้งหมด') {
-      console.log('📊 No month/year filter, showing all data:', filteredData.length, 'rows')
-      return filteredData
-    }
-    
-    const thaiMonths = [
-      'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
-    ]
-    const monthIndex = thaiMonths.indexOf(monthFilter)
-    if (monthIndex === -1) {
-      console.log('⚠️ Invalid month filter:', monthFilter)
-      return filteredData
-    }
-    
-    const year = parseInt(yearFilter)
-    const month = monthIndex + 1 // 1-12
-    const daysInMonth = new Date(year, month, 0).getDate()
-    
-    const dataMap = new Map<number, SheetData>()
-    filteredData.forEach(row => {
-      const dateValue = row['วันที่'] || row['Date'] || row['date'] || row['วัน'] || ''
-      if (dateValue) {
-        const parts = String(dateValue).trim().split('/')
-        if (parts.length === 3) {
-          const dayNum = parseInt(parts[0]) // แปลงเป็นตัวเลข (1-31)
-          dataMap.set(dayNum, row)
-        }
-      }
-    })
-    
-    console.log('� Creating full month for:', monthFilter, yearFilter, '- Days:', daysInMonth)
-    console.log('�📊 Data available for days:', Array.from(dataMap.keys()).sort((a, b) => a - b))
-    
-    const fullMonthData: SheetData[] = []
-    for (let day = 1; day <= daysInMonth; day++) {
-      if (dataMap.has(day)) {
-        fullMonthData.push(dataMap.get(day)!)
-      } else {
-        // ใช้ฟอร์แมตเดียวกับฐานข้อมูล (ไม่มี 0 นำหน้า)
-        const dateStr = `${day}/${month}/${year}`
-        const emptyRow: SheetData = {}
-        emptyRow['วันที่'] = dateStr
-        emptyRow['Date'] = dateStr
-        emptyRow['date'] = dateStr
-        if (teamFilter) {
-          emptyRow['ทีม'] = teamFilter
-          emptyRow['Team'] = teamFilter
-          emptyRow['team'] = teamFilter
-        }
-        COLUMN_ORDER.forEach(header => {
-          if (!emptyRow[header]) {
-            emptyRow[header] = ''
-          }
-        })
-        fullMonthData.push(emptyRow)
-      }
-    }
-    console.log('✅ Full month data created:', fullMonthData.length, 'rows')
-    return fullMonthData
-  }
-  const filteredData = data.filter((row) => {
+  
+  // กรองข้อมูลตามเงื่อนไข - แสดงเฉพาะข้อมูลที่มีจริงในฐานข้อมูล
+  const filteredData = data.filter((row, index) => {
     const dateValue = row['Date'] || row['date'] || ''
+    
+    // Debug แถวแรก
+    if (index === 0) {
+      console.log('🔍 First Row Debug:', {
+        row,
+        dateValue,
+        teamValue: row['Team'] || row['team'],
+        monthFromRow: row['เดือน'] || row['Month'] || row['month'],
+        monthFromDate: dateValue ? getThaiMonthFromDate(String(dateValue)) : '',
+        yearFromRow: row['ปี'] || row['Year'] || row['year'],
+        yearFromDate: dateValue ? getYearFromDate(String(dateValue)) : ''
+      })
+    }
+    
     if (teamFilter) {
       const teamValue = row['Team'] || row['team'] || ''
       if (String(teamValue) !== teamFilter) {
@@ -1037,7 +990,14 @@ export default function OverviewPage() {
     }
     return true
   })
-  const fullMonthData = generateFullMonthData(filteredData)
+  
+  console.log('🔍 Filter Summary:', {
+    totalData: data.length,
+    filteredData: filteredData.length,
+    teamFilter,
+    monthFilter,
+    yearFilter
+  })
   const filteredAdserData = adserData.filter((row) => {
     const dateValue = row['Date'] || row['date'] || ''
     const adserValue = row['Adser'] || row['adser'] || ''
@@ -1070,7 +1030,9 @@ export default function OverviewPage() {
     }
     return true
   })
-  const displayData = activeTab === 'team' ? fullMonthData : filteredAdserData
+  
+  // แสดงข้อมูลจากฐานข้อมูลโดยตรง ไม่สร้างวันที่ว่าง
+  const displayData = activeTab === 'team' ? filteredData : filteredAdserData
   const currentHeaders = activeTab === 'team' ? headers : adserHeaders
   
   console.log('📊 Display Data:', {
