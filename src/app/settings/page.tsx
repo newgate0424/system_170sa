@@ -140,7 +140,9 @@ export default function SettingsPage() {
     if (!isCheckingAuth) {
       fetchSettings()
     }
-    
+  }, [isCheckingAuth])
+  
+  useEffect(() => {
     // Listen for language changes from LanguageContext
     const handleLanguageChange = (event: CustomEvent) => {
       if (event.detail && (event.detail === 'th' || event.detail === 'en')) {
