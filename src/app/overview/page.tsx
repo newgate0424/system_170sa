@@ -695,7 +695,8 @@ export default function OverviewPage() {
   const isToday = (dateStr: string): boolean => {
     if (!dateStr) return false
     const today = new Date()
-    const todayStr = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()}`
+    // ใช้ฟอร์แมตเดียวกับฐานข้อมูล (ไม่มี 0 นำหน้า)
+    const todayStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`
     const cleanDateStr = String(dateStr).trim()
     if (cleanDateStr === todayStr) {
       console.log('🎯 Found today:', cleanDateStr, '===', todayStr)
@@ -733,7 +734,8 @@ export default function OverviewPage() {
       if (dataMap.has(day)) {
         fullMonthData.push(dataMap.get(day)!)
       } else {
-        const dateStr = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`
+        // ใช้ฟอร์แมตเดียวกับฐานข้อมูล (ไม่มี 0 นำหน้า)
+        const dateStr = `${day}/${month}/${year}`
         const emptyRow: SheetData = {}
         emptyRow['วันที่'] = dateStr
         emptyRow['Date'] = dateStr
@@ -1354,7 +1356,7 @@ export default function OverviewPage() {
                         className="h-8 text-xs"
                       />
                     ) : (
-                      <div className="text-sm font-semibold">{currentTargets.coverTarget.toFixed(2)}</div>
+                      <div className="text-xs">{currentTargets.coverTarget.toFixed(2)}</div>
                     )}
                   </div>
                   
@@ -1372,7 +1374,7 @@ export default function OverviewPage() {
                         className="h-8 text-xs"
                       />
                     ) : (
-                      <div className="text-sm font-semibold">{currentTargets.cpmTarget.toFixed(2)}</div>
+                      <div className="text-xs">{currentTargets.cpmTarget.toFixed(2)}</div>
                     )}
                   </div>
                   
@@ -1390,7 +1392,7 @@ export default function OverviewPage() {
                         className="h-8 text-xs"
                       />
                     ) : (
-                      <div className="text-sm font-semibold">{currentTargets.costPerTopupTarget.toFixed(2)}</div>
+                      <div className="text-xs">{currentTargets.costPerTopupTarget.toFixed(2)}</div>
                     )}
                   </div>
                   
@@ -1398,7 +1400,7 @@ export default function OverviewPage() {
                     <Label htmlFor="target-rate" className="text-xs text-muted-foreground">
                       Rate $ / ฿
                     </Label>
-                    <div className="text-sm font-semibold text-primary">
+                    <div className="text-xs font-medium text-primary">
                       1$ = ฿{currentTargets.exchangeRate.toFixed(2)}
                     </div>
                   </div>
@@ -1922,7 +1924,7 @@ export default function OverviewPage() {
                           key={rowIndex}
                           className={`border-b border-gray-100 dark:border-gray-800 transition-all duration-150 ${
                             isTodayRow
-                              ? 'bg-orange-50 dark:bg-orange-950/30 hover:bg-orange-100 dark:hover:bg-orange-950/50' 
+                              ? 'bg-orange-200 dark:bg-orange-900/50 hover:bg-orange-300 dark:hover:bg-orange-900/70 font-medium' 
                               : rowIndex % 2 === 0 
                                 ? 'bg-gray-50 dark:bg-gray-900/20 hover:bg-gray-100 dark:hover:bg-gray-900/40'
                                 : 'bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900/50'
