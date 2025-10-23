@@ -302,9 +302,33 @@ export default function OverviewPage() {
         // อัปเดต ref ทันที
         currentTargetsRef.current = newTargets
         console.log('✅ Team targets updated. New cpmTarget:', newTargets.cpmTarget, 'Ref cpmTarget:', currentTargetsRef.current.cpmTarget)
+      } else {
+        // ถ้าไม่มี targets ในฐานข้อมูล ให้ใช้ค่า default
+        console.warn('⚠️ No targets found for team, using defaults')
+        const defaultTargets = {
+          coverTarget: 75,
+          cpmTarget: 2.2,
+          costPerTopupTarget: 28,
+          lostMessagesTarget: 0,
+          duplicateTarget: 0,
+          under18Target: 0,
+        }
+        setCurrentTargets(defaultTargets)
+        currentTargetsRef.current = defaultTargets
       }
     } catch (error) {
       console.error('❌ Failed to load team targets:', error)
+      // กรณี error ให้ใช้ค่า default
+      const defaultTargets = {
+        coverTarget: 75,
+        cpmTarget: 2.2,
+        costPerTopupTarget: 28,
+        lostMessagesTarget: 0,
+        duplicateTarget: 0,
+        under18Target: 0,
+      }
+      setCurrentTargets(defaultTargets)
+      currentTargetsRef.current = defaultTargets
     } finally {
       setIsLoadingTargets(false) // เสร็จสิ้นการโหลด
     }
@@ -622,6 +646,8 @@ export default function OverviewPage() {
       
       if (result.data && Array.isArray(result.data)) {
         console.log('✅ Setting team data:', result.data.length, 'rows', silent ? '(silent)' : '')
+        console.log('📋 Sample data row:', result.data[0])
+        console.log('📋 All field names:', result.data[0] ? Object.keys(result.data[0]) : 'no data')
         setHeaders(result.headers || COLUMN_ORDER)
         setData(result.data)
         setTeamDataCache(result.data)
@@ -783,12 +809,27 @@ export default function OverviewPage() {
       yearFilter,
       isCheckingAuth,
       isLoadingTargets,
-      cpmTarget: currentTargets.cpmTarget
+      cpmTarget: currentTargets.cpmTarget,
+      hasData: data.length
     })
     
-    // ให้โหลดข้อมูลได้เสมอถ้าไม่ได้กำลังตรวจสอบ auth และไม่ได้โหลด targets และมี cpmTarget แล้ว
+    // เงื่อนไขการโหลดข้อมูล:
+    // 1. ต้องเป็นแท็บ team
+    // 2. มี teamFilter
+    // 3. ไม่ได้กำลังตรวจสอบ auth
+    // 4. ไม่ได้กำลังโหลด targets
+    // 5. มี cpmTarget แล้ว (> 0)
     if (activeTab === 'team' && teamFilter && !isCheckingAuth && !isLoadingTargets && currentTargets.cpmTarget > 0) {
+      console.log('✅ Conditions met, fetching team data...')
       fetchData(false)
+    } else {
+      console.log('⏸️ Skipping fetch. Reasons:', {
+        wrongTab: activeTab !== 'team',
+        noTeam: !teamFilter,
+        checkingAuth: isCheckingAuth,
+        loadingTargets: isLoadingTargets,
+        noCpmTarget: currentTargets.cpmTarget === 0
+      })
     }
   }, [activeTab, teamFilter, monthFilter, yearFilter, isCheckingAuth, isLoadingTargets, currentTargets.cpmTarget])
   
@@ -948,6 +989,7 @@ export default function OverviewPage() {
   }
   
   // กรองข้อมูลตามเงื่อนไข - แสดงเฉพาะข้อมูลที่มีจริงในฐานข้อมูล
+  // หมายเหตุ: API ได้กรอง team ให้แล้ว ไม่ต้องกรองอีกครั้งที่ client
   const filteredData = data.filter((row, index) => {
     const dateValue = row['Date'] || row['date'] || ''
     
@@ -964,12 +1006,14 @@ export default function OverviewPage() {
       })
     }
     
-    if (teamFilter) {
-      const teamValue = row['Team'] || row['team'] || ''
-      if (String(teamValue) !== teamFilter) {
-        return false
-      }
-    }
+    // ไม่ต้องกรอง team เพราะ API กรองให้แล้ว
+    // if (teamFilter) {
+    //   const teamValue = row['Team'] || row['team'] || ''
+    //   if (String(teamValue) !== teamFilter) {
+    //     return false
+    //   }
+    // }
+    
     if (monthFilter) {
       let monthValue = row['เดือน'] || row['Month'] || row['month'] || ''
       if (!monthValue && dateValue) {
@@ -1000,16 +1044,17 @@ export default function OverviewPage() {
   })
   const filteredAdserData = adserData.filter((row) => {
     const dateValue = row['Date'] || row['date'] || ''
-    const adserValue = row['Adser'] || row['adser'] || ''
-    if (selectedAdser && String(adserValue) !== selectedAdser) {
-      return false
-    }
-    if (teamFilter) {
-      const teamValue = row['Team'] || row['team'] || ''
-      if (String(teamValue) !== teamFilter) {
-        return false
-      }
-    }
+    // ไม่ต้องกรอง adser และ team เพราะ API กรองให้แล้ว
+    // const adserValue = row['Adser'] || row['adser'] || ''
+    // if (selectedAdser && String(adserValue) !== selectedAdser) {
+    //   return false
+    // }
+    // if (teamFilter) {
+    //   const teamValue = row['Team'] || row['team'] || ''
+    //   if (String(teamValue) !== teamFilter) {
+    //     return false
+    //   }
+    // }
     if (monthFilter) {
       let monthValue = row['เดือน'] || row['Month'] || row['month'] || ''
       if (!monthValue && dateValue) {
