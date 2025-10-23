@@ -857,6 +857,20 @@ export default function OverviewPage() {
   })
   const displayData = activeTab === 'team' ? fullMonthData : filteredAdserData
   const currentHeaders = activeTab === 'team' ? headers : adserHeaders
+  
+  // Debug log
+  console.log('📊 Display Data Debug:', {
+    activeTab,
+    dataLength: data.length,
+    filteredDataLength: filteredData.length,
+    fullMonthDataLength: fullMonthData.length,
+    displayDataLength: displayData.length,
+    headersLength: currentHeaders.length,
+    teamFilter,
+    monthFilter,
+    yearFilter
+  })
+  
   const displayHeaders = COLUMN_ORDER.filter(orderedColumn => {
     const exists = currentHeaders.length === 0 || currentHeaders.includes(orderedColumn)
     const isHidden = ['Team', 'team', 'Adser', 'adser'].includes(orderedColumn)
@@ -1451,7 +1465,7 @@ export default function OverviewPage() {
                       Rate $ / ฿
                     </Label>
                     <div className="text-xs font-medium text-primary">
-                      1$ = ฿{currentTargets.exchangeRate.toFixed(2)}
+                      1$ = ฿{exchangeRate.toFixed(2)}
                     </div>
                   </div>
                 </div>
