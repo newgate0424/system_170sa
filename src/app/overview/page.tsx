@@ -1274,28 +1274,36 @@ export default function OverviewPage() {
       fontWeight: isSummaryRow ? 'bold' : 'normal'
     }
     
-    // ดึงค่าจริงจากข้อมูล (เป็น % แล้ว ถ้าอยู่ในโหมด percent)
+    // ดึงค่าจริงจากข้อมูล
     let actualValue = 0
-    const totalMessages = parseFloat(String(row['Total_Messages'] || '0').replace(/,/g, ''))
     
-    if (header === 'Lost_Messages') {
-      const lostMessages = parseFloat(String(row['Lost_Messages'] || '0').replace(/,/g, ''))
-      if (totalMessages > 0) {
-        actualValue = (lostMessages / totalMessages) * 100
-      }
-    } else if (header === 'Duplicate') {
-      const duplicate = parseFloat(String(row['Duplicate'] || '0').replace(/,/g, ''))
-      if (totalMessages > 0) {
-        actualValue = (duplicate / totalMessages) * 100
-      }
-    } else if (header === 'Under_18') {
-      const under18 = parseFloat(String(row['Under_18'] || '0').replace(/,/g, ''))
-      if (totalMessages > 0) {
-        actualValue = (under18 / totalMessages) * 100
+    if (isSummaryRow) {
+      // สำหรับแถวรวม: ข้อมูลจาก summaryRow เป็น string เปอร์เซ็นต์แล้ว (เช่น "5.25%")
+      const valueStr = String(row[header] || '0').replace(/[%,]/g, '')
+      actualValue = parseFloat(valueStr)
+    } else {
+      // สำหรับแถวปกติ: คำนวณเปอร์เซ็นต์จากข้อมูลดิบ
+      const totalMessages = parseFloat(String(row['Total_Messages'] || '0').replace(/,/g, ''))
+      
+      if (header === 'Lost_Messages') {
+        const lostMessages = parseFloat(String(row['Lost_Messages'] || '0').replace(/,/g, ''))
+        if (totalMessages > 0) {
+          actualValue = (lostMessages / totalMessages) * 100
+        }
+      } else if (header === 'Duplicate') {
+        const duplicate = parseFloat(String(row['Duplicate'] || '0').replace(/,/g, ''))
+        if (totalMessages > 0) {
+          actualValue = (duplicate / totalMessages) * 100
+        }
+      } else if (header === 'Under_18') {
+        const under18 = parseFloat(String(row['Under_18'] || '0').replace(/,/g, ''))
+        if (totalMessages > 0) {
+          actualValue = (under18 / totalMessages) * 100
+        }
       }
     }
     
-    // ดึงเป้าหมาย
+    // ดึงเป้าหมาย จากการตั้งค่าของทีม
     let targetValue = 0
     if (header === 'Lost_Messages') {
       targetValue = currentTargetsRef.current.lostMessagesTarget
@@ -1305,22 +1313,39 @@ export default function OverviewPage() {
       targetValue = currentTargetsRef.current.under18Target
     }
     
-    // ถ้าไม่มีเป้า ไม่ใส่สี
+    console.log(`🎯 ${header} Target Debug (${isSummaryRow ? 'Summary' : 'Regular'}):`, {
+      targetValue,
+      actualValue,
+      team: teamFilterRef.current,
+      allTargets: currentTargetsRef.current
+    })
+    
+    // ถ้าไม่มีเป้าหมายที่ตั้งไว้ ไม่ใส่สี
     if (targetValue === 0) {
       return baseStyle
     }
     
-    // กำหนดสี: ยิ่งน้อยยิ่งดี
-    if (actualValue <= targetValue) {
-      // ≤ เป้า → สีเขียว (ดี!)
+    // คำนวณเปอร์เซ็นต์ตามเป้าหมาย (actualValue/targetValue * 100)
+    const percentageOfTarget = (actualValue / targetValue) * 100
+    
+    console.log(`📊 ${header} Color Calculation (${isSummaryRow ? 'Summary' : 'Regular'}):`, {
+      actualValue: actualValue.toFixed(2),
+      targetValue,
+      percentageOfTarget: percentageOfTarget.toFixed(2) + '%',
+      colorRule: percentageOfTarget <= 100 ? 'GREEN' : percentageOfTarget <= 120 ? 'RED' : 'DARK_RED'
+    })
+    
+    // กำหนดสีตามเปอร์เซ็นต์ของเป้าหมาย
+    if (percentageOfTarget <= 100) {
+      // ≤100% → สีเขียว (ดี!)
       baseStyle.backgroundColor = '#bbf7d0' // green-200
       baseStyle.color = '#166534' // green-800
-    } else if (actualValue <= targetValue * 1.2) {
-      // เกินเป้าไม่เกิน 20% → สีแดง
+    } else if (percentageOfTarget <= 120) {
+      // >100% แต่ ≤120% → สีแดง
       baseStyle.backgroundColor = '#fecaca' // red-200
       baseStyle.color = '#991b1b' // red-800
     } else {
-      // เกินเป้ามากกว่า 20% → สีแดงเข้ม
+      // >120% → สีแดงเข้ม
       baseStyle.backgroundColor = '#fca5a5' // red-300
       baseStyle.color = '#7f1d1d' // red-900
     }
@@ -1887,7 +1912,7 @@ export default function OverviewPage() {
                         className="h-8 text-xs"
                       />
                     ) : (
-                      <div className="text-xs">{currentTargets.coverTarget.toFixed(2)}</div>
+                      <div className="text-xs">{currentTargets.coverTarget}</div>
                     )}
                   </div>
                   
@@ -1905,7 +1930,7 @@ export default function OverviewPage() {
                         className="h-8 text-xs"
                       />
                     ) : (
-                      <div className="text-xs">{currentTargets.cpmTarget.toFixed(2)}</div>
+                      <div className="text-xs">{currentTargets.cpmTarget}</div>
                     )}
                   </div>
                   
@@ -1923,7 +1948,7 @@ export default function OverviewPage() {
                         className="h-8 text-xs"
                       />
                     ) : (
-                      <div className="text-xs">{currentTargets.costPerTopupTarget.toFixed(2)}</div>
+                      <div className="text-xs">{currentTargets.costPerTopupTarget}</div>
                     )}
                   </div>
                   
@@ -1944,7 +1969,7 @@ export default function OverviewPage() {
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
                       </div>
                     ) : (
-                      <div className="text-xs">{currentTargets.lostMessagesTarget.toFixed(1)}%</div>
+                      <div className="text-xs">{currentTargets.lostMessagesTarget}%</div>
                     )}
                   </div>
                   
@@ -1965,7 +1990,7 @@ export default function OverviewPage() {
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
                       </div>
                     ) : (
-                      <div className="text-xs">{currentTargets.duplicateTarget.toFixed(1)}%</div>
+                      <div className="text-xs">{currentTargets.duplicateTarget}%</div>
                     )}
                   </div>
                   
@@ -1986,7 +2011,7 @@ export default function OverviewPage() {
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
                       </div>
                     ) : (
-                      <div className="text-xs">{currentTargets.under18Target.toFixed(1)}%</div>
+                      <div className="text-xs">{currentTargets.under18Target}%</div>
                     )}
                   </div>
                   
@@ -1995,7 +2020,7 @@ export default function OverviewPage() {
                       Rate $ / ฿
                     </Label>
                     <div className="text-xs font-medium text-primary">
-                      1$ = ฿{exchangeRate.toFixed(2)}
+                      1$ = ฿{exchangeRate}
                     </div>
                   </div>
                 </div>
