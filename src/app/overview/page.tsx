@@ -45,22 +45,18 @@ const COLUMN_TRANSLATIONS: { [key: string]: { th: string; en: string } } = {
   'Date': { th: 'วันที่', en: 'Date' },
   'วันที่': { th: 'วันที่', en: 'Date' },
   'KPI_Budget_Used': { th: '%KPI/Budget', en: 'KPI_Budget_Used' },
-  'KPI_Budget Used': { th: '%KPI/Budget', en: 'KPI_Budget Used' },
   'Planned_Messages': { th: 'แผนทัก', en: 'Planned_Messages' },
   'Total_Messages': { th: 'ยอดทัก', en: 'Total_Messages' },
   'Messages(Meta)': { th: 'ยอดทัก(Meta)', en: 'Messages(Meta)' },
   'Lost_Messages': { th: 'ยอดเสีย', en: 'Lost_Messages' },
   'Net_Messages': { th: 'ทักบริสุทธิ์', en: 'Net_Messages' },
-  'Net_Messages_Pure': { th: 'ยอดทักบริสุทธิ', en: 'Net_Messages_Pure' },
   'Planned_Spend/Day': { th: 'แผนงบ', en: 'Planned_Spend/Day' },
   'Spend': { th: 'ค่าใช้จ่าย', en: 'Spend' },
   'CPM': { th: 'CPM', en: 'CPM' },
   'Cost_per_Message_(Meta)': { th: 'ทุนทัก(Meta)', en: 'Cost_per_Message_(Meta)' },
   'Top-up': { th: 'เติม', en: 'Top-up' },
   'Messages_per_Top_up': { th: 'ทัก/เติม', en: 'Messages_per_Top_up' },
-  'Messages_per_Top-up': { th: 'ทัก/เติม', en: 'Messages_per_Top-up' },
   'Quality_Messages_per_Top_up': { th: 'ทักบริสุทธิ์ /เติม', en: 'Quality_Messages_per_Top_up' },
-  'Quality_Messages_per_Top-up': { th: 'ทักคุณภาพ/เติม', en: 'Quality_Messages_per_Top-up' },
   'Cost_per_Top-up': { th: 'ต้นทุน/เติม', en: 'Cost_per_Top-up' },
   'Cost_per_Top_up_Pure': { th: 'ทุน/เติม', en: 'Cost_per_Top_up_Pure' },
   'New Player Revenue (THB)': { th: 'ยอดเล่นใหม่(฿)', en: 'New Player Revenue (THB)' },
@@ -70,6 +66,7 @@ const COLUMN_TRANSLATIONS: { [key: string]: { th: string; en: string } } = {
   'Silent': { th: 'ทักเงียบ', en: 'Silent' },
   'Duplicate': { th: 'ทักซ้ำ', en: 'Duplicate' },
   'Has_User': { th: 'มียูส', en: 'Has_User' },
+  'Under_18': { th: 'เด็ก', en: 'Under_18' },
   'Quality_Messages': { th: 'ข้อความคุณภาพ', en: 'Quality_Messages' },
   'Cost_per_Quality_Message': { th: 'ต้นทุน/ข้อความคุณภาพ', en: 'Cost_per_Quality_Message' },
   'Click(Meta)': { th: 'คลิก(Meta)', en: 'Click(Meta)' },
@@ -77,7 +74,6 @@ const COLUMN_TRANSLATIONS: { [key: string]: { th: string; en: string } } = {
   'Landing_Click(Meta)': { th: 'คลิกหน้า Landing(Meta)', en: 'Landing_Click(Meta)' },
   'Spam': { th: 'ก่อกวน', en: 'Spam' },
   'Blocked': { th: 'บล็อก', en: 'Blocked' },
-  'Under_18': { th: 'เด็ก', en: 'Under_18' },
   'Over_50': { th: 'อายุเกิน50', en: 'Over_50' },
   'Foreign': { th: 'ต่างชาติ', en: 'Foreign' },
 }
@@ -218,25 +214,36 @@ export default function OverviewPage() {
   const [savedScrollPosition, setSavedScrollPosition] = useState<number>(0)
   const [savedScrollLeft, setSavedScrollLeft] = useState<number>(0)
   
+  // Ref เพื่อป้องกันการโหลดข้อมูลซ้ำซ้อน
+  const isLoadingDataRef = useRef(false)
+  const isLoadingAdserDataRef = useRef(false)
+  
   // เป้าหมายของแต่ละทีม
   interface TeamTargets {
     coverTarget: number
     cpmTarget: number
     costPerTopupTarget: number
-    exchangeRate: number
+    lostMessagesTarget: number // ยอดเสีย
+    duplicateTarget: number // ทักซ้ำ
+    under18Target: number // เด็ก
   }
   
   const [currentTargets, setCurrentTargets] = useState<TeamTargets>({
-    coverTarget: 1.0,
-    cpmTarget: 15,
-    costPerTopupTarget: 100,
-    exchangeRate: 35
+    coverTarget: 0,
+    cpmTarget: 0,
+    costPerTopupTarget: 0,
+    lostMessagesTarget: 0,
+    duplicateTarget: 0,
+    under18Target: 0,
   })
+  
+  const [isLoadingTargets, setIsLoadingTargets] = useState(false) // เพิ่ม flag สำหรับโหลด targets
   
   // โหลดเป้าหมายจากฐานข้อมูล
   const loadTeamTargets = async (team: string) => {
     if (!team) return
     
+    setIsLoadingTargets(true) // เริ่มโหลด
     try {
       console.log('📥 Loading team targets for:', team)
       const res = await fetch(`/api/team-targets?team=${encodeURIComponent(team)}`)
@@ -246,16 +253,25 @@ export default function OverviewPage() {
       
       if (data && !data.error) {
         const newTargets = {
-          coverTarget: data.coverTarget || 1.0,
-          cpmTarget: data.cpmTarget || 15,
-          costPerTopupTarget: data.costPerTopupTarget || 100,
-          exchangeRate: data.exchangeRate || 35
+          coverTarget: data.coverTarget || 0,
+          cpmTarget: data.cpmTarget || 0,
+          costPerTopupTarget: data.costPerTopupTarget || 0,
+          lostMessagesTarget: data.lostMessagesTarget || 0,
+          duplicateTarget: data.duplicateTarget || 0,
+          under18Target: data.under18Target || 0,
         }
-        console.log('✅ Setting team targets:', newTargets)
+        
+        console.log('📊 Setting new targets:', newTargets)
         setCurrentTargets(newTargets)
+        
+        // อัปเดต ref ทันที
+        currentTargetsRef.current = newTargets
+        console.log('✅ Team targets updated. New cpmTarget:', newTargets.cpmTarget, 'Ref cpmTarget:', currentTargetsRef.current.cpmTarget)
       }
     } catch (error) {
       console.error('❌ Failed to load team targets:', error)
+    } finally {
+      setIsLoadingTargets(false) // เสร็จสิ้นการโหลด
     }
   }
   
@@ -281,8 +297,10 @@ export default function OverviewPage() {
       const result = await response.json()
       console.log('✅ Team targets saved to database:', result)
       
-      // อัพเดต state ด้วยค่าที่บันทึกสำเร็จแล้ว
+      // อัพเดต state และ ref ด้วยค่าที่บันทึกสำเร็จแล้ว
       setCurrentTargets(result)
+      currentTargetsRef.current = result
+      console.log('📊 Updated targets. New cpmTarget:', result.cpmTarget, 'Ref cpmTarget:', currentTargetsRef.current.cpmTarget)
     } catch (error) {
       console.error('❌ Failed to save team targets:', error)
     }
@@ -290,12 +308,8 @@ export default function OverviewPage() {
   
   // โหลดเป้าหมายเมื่อเปลี่ยนทีม
   useEffect(() => {
-    console.log('🔄 useEffect triggered:', { teamFilter, isCheckingAuth })
     if (teamFilter && !isCheckingAuth) {
-      console.log('✅ Calling loadTeamTargets for:', teamFilter)
       loadTeamTargets(teamFilter)
-    } else {
-      console.log('⏸️ Skip loading:', teamFilter ? 'Still checking auth' : 'No team selected')
     }
   }, [teamFilter, isCheckingAuth])
   
@@ -322,13 +336,6 @@ export default function OverviewPage() {
         if (data.rates && data.rates.THB) {
           const newRate = data.rates.THB
           setExchangeRate(newRate)
-          
-          // แค่อัปเดต state อย่างเดียว ไม่บันทึกลงฐานข้อมูล
-          setCurrentTargets(prev => ({
-            ...prev,
-            exchangeRate: newRate
-          }))
-          
           console.log('💱 Exchange rate updated:', newRate, 'THB per 1 USD')
         }
       } catch (error) {
@@ -345,6 +352,40 @@ export default function OverviewPage() {
   const [adserHeaders, setAdserHeaders] = useState<string[]>([])
   const [selectedAdser, setSelectedAdser] = useState<string>('')
   const adserList = teamFilter ? (TEAM_MEMBERS[teamFilter] || []) : []
+  
+  // Wrapper function สำหรับป้องกันการล้างข้อมูลในโหมด silent
+  const safeSetAdserData = (newData: SheetData[], isSilentMode = false) => {
+    if (isSilentMode && (!newData || newData.length === 0)) {
+      console.log('🛡️ Protected: Not clearing adser data in silent mode')
+      return // ไม่ล้างข้อมูลในโหมด silent
+    }
+    console.log('📝 Setting adser data:', newData.length, 'rows, silent:', isSilentMode)
+    setAdserData(newData)
+  }
+  
+  // Refs สำหรับ auto-refresh ใช้ค่าล่าสุดโดยไม่ต้องพึ่ง dependencies
+  const activeTabRef = useRef(activeTab)
+  const selectedAdserRef = useRef(selectedAdser)
+  const teamFilterRef = useRef(teamFilter)
+  const currentTargetsRef = useRef(currentTargets)
+  
+  // อัปเดต refs เมื่อ state เปลี่ยน
+  useEffect(() => {
+    activeTabRef.current = activeTab
+  }, [activeTab])
+  
+  useEffect(() => {
+    selectedAdserRef.current = selectedAdser
+  }, [selectedAdser])
+  
+  useEffect(() => {
+    teamFilterRef.current = teamFilter
+  }, [teamFilter])
+  
+  useEffect(() => {
+    currentTargetsRef.current = currentTargets
+  }, [currentTargets])
+  
   interface ColorRule {
     id?: string
     team: string
@@ -369,14 +410,30 @@ export default function OverviewPage() {
     { name: 'เขียว', bg: '#22c55e', text: '#ffffff' },
     { name: 'ฟ้า', bg: '#3b82f6', text: '#ffffff' },
   ]
+  // กรองคอลัมน์ที่สามารถตั้งค่าสีได้ (ยกเว้นคอลัมน์ที่มีสี hard-coded หรือไม่ควรตั้งค่าสี)
   const colorableColumns = headers.filter(header => 
     header !== 'Date' && 
     header !== 'วันที่' && 
     header !== 'Team' && 
-    header !== 'ทีม'
+    header !== 'ทีม' &&
+    header !== 'KPI_Budget_Used' && // มีสีแบบ hard-coded ตาม %
+    header !== 'Total_Messages' && // มีสีตาม % เทียบกับแผนทัก
+    header !== 'CPM' && // มีสีตาม % เทียบกับเป้า cpmTarget
+    header !== 'Cost_per_Top_up_Pure' && // มีสีตาม % เทียบกับเป้า costPerTopupTarget
+    header !== 'Lost_Messages' && // มีสีตามเป้า % (ยิ่งน้อยยิ่งดี)
+    header !== 'Duplicate' && // มีสีตามเป้า % (ยิ่งน้อยยิ่งดี)
+    header !== 'Under_18' && // มีสีตามเป้า % (ยิ่งน้อยยิ่งดี)
+    header !== 'Planned_Messages' && // แผนทัก - ไม่ต้องตั้งค่าสี
+    header !== 'Messages(Meta)' && // ยอดทัก(Meta) - ไม่ต้องตั้งค่าสี
+    header !== 'Planned_Spend/Day' && // แผนงบ - ไม่ต้องตั้งค่าสี
+    header !== 'Spend' && // ค่าใช้จ่าย - ไม่ต้องตั้งค่าสี
+    header !== 'Top-up' && // เติม - ไม่ต้องตั้งค่าสี
+    header !== 'Messages_per_Top_up' && // ทัก/เติม - ไม่ต้องตั้งค่าสี
+    header !== 'Quality_Messages_per_Top_up' // ทักบริสุทธิ์/เติม - ไม่ต้องตั้งค่าสี
   )
   const percentageColumns = [
     'Lost_Messages',
+    'Net_Messages_Pure',
     'Net_Messages',
     'Page_Blocks_7Days',
     'Page_Blocks_30Days',
@@ -445,18 +502,55 @@ export default function OverviewPage() {
     fetchColorRules()
   }, [])
   const fetchData = async (silent = false) => {
+    // ป้องกันการโหลดซ้ำ
+    if (isLoadingDataRef.current && !silent) {
+      console.log('⏸️ fetchData skipped: already loading')
+      return
+    }
+    
     if (!silent) {
       setIsLoading(true)
+      isLoadingDataRef.current = true
     }
     setError('')
     try {
+      // Debug: แสดงค่า currentTargets ก่อนเรียก API
+      const cpmTarget = currentTargetsRef.current.cpmTarget
+      const debugInfo = {
+        cpmTarget: cpmTarget,
+        exchangeRate: exchangeRate,
+        teamFilter,
+        silent,
+        timestamp: new Date().toISOString(),
+        currentTargetsState: currentTargets.cpmTarget,
+        refTargets: currentTargetsRef.current
+      }
+      console.log('🚀 fetchData called:', debugInfo)
+      
+      // ถ้า cpmTarget เป็น 0 แสดงว่ายังไม่ได้ตั้งค่า ให้ข้าม
+      if (cpmTarget === 0) {
+        console.warn('⚠️ cpmTarget is 0, skipping API call. Debug:', {
+          refValue: currentTargetsRef.current.cpmTarget,
+          stateValue: currentTargets.cpmTarget,
+          isLoadingTargets,
+          teamFilter
+        })
+        if (!silent) {
+          setIsLoading(false)
+          isLoadingDataRef.current = false
+        }
+        return
+      }
+      
       const params = new URLSearchParams()
       if (teamFilter) params.append('team', teamFilter)
       if (monthFilter) params.append('month', monthFilter)
       if (yearFilter) params.append('year', yearFilter)
-      params.append('exchangeRate', currentTargets.exchangeRate.toString())
-      params.append('cpmTarget', currentTargets.cpmTarget.toString())
+      params.append('cpmTarget', cpmTarget.toString())
       const url = `/api/gateway-data?${params.toString()}`
+      
+      console.log('📡 API URL:', url)
+      
       const res = await fetch(url)
       const result = await res.json()
       if (!res.ok) {
@@ -468,52 +562,91 @@ export default function OverviewPage() {
         silent,
         firstRow: result.data?.[0]
       })
-      if (result.data && result.data.length > 0) {
-        console.log('✅ Setting data to state:', result.data.length, 'rows')
-        setHeaders(result.headers || [])
+      
+      if (result.data && Array.isArray(result.data)) {
+        console.log('✅ Setting team data:', result.data.length, 'rows')
+        setHeaders(result.headers || COLUMN_ORDER)
         setData(result.data)
-        setTeamDataCache(result.data) // Cache ข้อมูล
+        setTeamDataCache(result.data)
         setLastRefreshTime(new Date())
-        console.log('✅ Data set complete!')
+        
         if (!silent) {
-          console.log('📋 Data from Database:', result.data.length, 'rows')
-          console.log('📊 Headers:', result.headers)
+          console.log('📋 Team data loaded:', result.data.length, 'rows')
         }
       } else {
-        console.log('⚠️ No data returned from API', { silent })
-        // ไม่ clear ข้อมูลเดิม ให้คงไว้
-        if (!silent) {
-          // แสดง error เฉพาะเมื่อไม่ใช่ silent refresh
-          console.warn('No data available, keeping existing data')
+        console.warn('⚠️ No data returned from API')
+        if (!silent && teamDataCache.length === 0) {
+          setError('ไม่พบข้อมูล')
         }
       }
     } catch (err: any) {
-      console.error('Error fetching data:', err)
-      // ถ้า error แล้วเป็น silent refresh ให้ใช้ cache เดิม
-      if (silent && teamDataCache.length > 0) {
-        console.log('✅ Error during silent refresh, keeping cache')
-      } else if (!silent) {
-        setError(err.message)
+      console.error('❌ Error fetching team data:', err)
+      if (!silent) {
+        setError(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล')
       }
     } finally {
       if (!silent) {
         setIsLoading(false)
+        isLoadingDataRef.current = false
       }
     }
   }
   const fetchAdserData = async (silent = false) => {
-    if (!silent) {
-      setIsLoading(true)
+    // ป้องกันการโหลดซ้ำซ้อน
+    if (isLoadingAdserDataRef.current && !silent) {
+      console.log('⏸️ Adser fetch already in progress, skipping...')
+      return
     }
-    setError('')
+    
     try {
+      isLoadingAdserDataRef.current = true
+      if (!silent) {
+        setIsLoading(true)
+      }
+      setError('')
+      
+      const cpmTarget = currentTargetsRef.current.cpmTarget
+      
+      console.log('🎯 fetchAdserData Debug:', {
+        cpmTarget,
+        currentTargetsState: currentTargets.cpmTarget,
+        refTargets: currentTargetsRef.current,
+        teamFilter,
+        selectedAdser,
+        silent,
+        userRole
+      })
+      
+      // ถ้า cpmTarget เป็น 0 แสดงว่ายังไม่ได้ตั้งค่า ให้ข้าม
+      if (cpmTarget === 0) {
+        console.warn('⚠️ Adser: cpmTarget is 0, skipping API call. Debug:', {
+          refValue: currentTargetsRef.current.cpmTarget,
+          stateValue: currentTargets.cpmTarget,
+          isLoadingTargets,
+          teamFilter
+        })
+        isLoadingAdserDataRef.current = false
+        if (!silent) {
+          setIsLoading(false)
+        }
+        return
+      }
+      
+      // เพิ่มการป้องกันสำหรับ ADMIN users ในโหมด silent
+      if (silent && userRole === 'ADMIN' && adserData.length > 0) {
+        console.log('👨‍💼 ADMIN silent refresh: Preserving existing data, current rows:', adserData.length)
+        // อัปเดตเวลาแต่ไม่เรียก API เพื่อป้องกันการล้างข้อมูล
+        setLastRefreshTime(new Date())
+        isLoadingAdserDataRef.current = false
+        return
+      }
+      
       const params = new URLSearchParams()
       if (teamFilter) params.append('team', teamFilter)
       if (selectedAdser) params.append('adser', selectedAdser)
       if (monthFilter) params.append('month', monthFilter)
       if (yearFilter) params.append('year', yearFilter)
-      params.append('exchangeRate', currentTargets.exchangeRate.toString())
-      params.append('cpmTarget', currentTargets.cpmTarget.toString())
+      params.append('cpmTarget', cpmTarget.toString())
       const url = `/api/gateway-data?${params.toString()}`
       const res = await fetch(url)
       const result = await res.json()
@@ -525,173 +658,200 @@ export default function OverviewPage() {
         headersLength: result.headers?.length || 0,
         silent,
         selectedAdser,
+        userRole,
         firstRow: result.data?.[0]
       })
-      if (result.data && result.data.length > 0) {
-        setAdserHeaders(result.headers || [])
-        setAdserData(result.data)
-        // Cache ข้อมูล adser
+      
+      if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+        console.log('✅ Setting adser data:', result.data.length, 'rows')
+        setAdserHeaders(result.headers || COLUMN_ORDER)
+        safeSetAdserData(result.data, silent)
+        
         if (selectedAdser) {
           setAdserDataCache(prev => ({ ...prev, [selectedAdser]: result.data }))
         }
         setLastRefreshTime(new Date())
+        
         if (!silent) {
-          console.log('📋 Adser headers:', result.headers)
-          console.log('👥 Adser list:', adserList)
+          console.log('📋 Adser data loaded:', result.data.length, 'rows')
         }
       } else {
-        console.log('⚠️ No adser data returned from API', { silent })
-        // ไม่ clear ข้อมูลเดิม ให้คงไว้
-        if (!silent) {
-          // แสดง error เฉพาะเมื่อไม่ใช่ silent refresh
-          console.warn('No adser data available, keeping existing data')
+        console.warn('⚠️ No adser data returned from API or empty array', {
+          silent,
+          selectedAdser,
+          hasCache: selectedAdser ? !!adserDataCache[selectedAdser] : false,
+          currentDataLength: adserData.length
+        })
+        
+        // ในโหมด silent (auto-refresh) ต้องปกป้องข้อมูลเดิมไว้เสมо
+        if (silent) {
+          console.log('🔄 Silent refresh: No new data, PRESERVING existing data. Current data rows:', adserData.length)
+          setLastRefreshTime(new Date()) // อัปเดตเวลา refresh แต่คงข้อมูลเดิมไว้เสมอ
+          // ไม่ทำอะไรกับ adserData เลย เพื่อคงข้อมูลเดิมไว้
+        } else {
+          // ในโหมดปกติ ถ้าไม่มีข้อมูลและไม่มีข้อมูลใน cache ให้แสดง error
+          if (!selectedAdser || !adserDataCache[selectedAdser]) {
+            setError('ไม่พบข้อมูล Adser')
+            safeSetAdserData([], false) // ล้างข้อมูลเฉพาะในโหมดปกติ
+          } else {
+            // ถ้ามีข้อมูลใน cache ให้ใช้ข้อมูลจาก cache
+            console.log('📦 Using cached data for:', selectedAdser)
+            safeSetAdserData(adserDataCache[selectedAdser], false)
+          }
         }
       }
+      
       if (adserList.length > 0 && !selectedAdser) {
         setSelectedAdser(adserList[0])
       }
     } catch (err: any) {
-      console.error('Error fetching adser data:', err)
-      // ถ้า error แล้วเป็น silent refresh ให้ใช้ cache เดิม
-      if (silent && selectedAdser && adserDataCache[selectedAdser]?.length > 0) {
-        console.log('✅ Error during silent refresh, keeping adser cache')
-      } else if (!silent) {
-        setError(err.message)
+      console.error('❌ Error fetching adser data:', err, {
+        silent,
+        selectedAdser,
+        currentDataLength: adserData.length,
+        hasCache: selectedAdser ? !!adserDataCache[selectedAdser] : false
+      })
+      
+      if (silent) {
+        // ในโหมด silent (auto-refresh) ถ้าเกิด error ให้ log แต่ไม่แสดง error message
+        // และคงข้อมูลเดิมไว้โดยไม่ทำอะไร
+        console.log('🔄 Silent refresh error: PRESERVING existing data. Current data rows:', adserData.length)
+        setLastRefreshTime(new Date()) // อัปเดตเวลาแต่คงข้อมูลเดิมไว้เสมอ
+        // ไม่ทำอะไรกับ adserData และ error state เลย
+      } else {
+        // ในโหมดปกติ ให้แสดง error message
+        setError(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล Adser')
       }
     } finally {
+      isLoadingAdserDataRef.current = false
       if (!silent) {
         setIsLoading(false)
       }
     }
   }
+  // Fetch ข้อมูล Team เมื่อ filter เปลี่ยนหรือ targets พร้อม
   useEffect(() => {
-    fetchData(false)
-  }, []) // โหลดครั้งแรกเท่านั้น
+    console.log('🔄 Team fetch useEffect triggered:', {
+      activeTab,
+      teamFilter,
+      monthFilter,
+      yearFilter,
+      isCheckingAuth,
+      isLoadingTargets,
+      cpmTarget: currentTargets.cpmTarget
+    })
+    
+    // ให้โหลดข้อมูลได้เสมอถ้าไม่ได้กำลังตรวจสอบ auth และไม่ได้โหลด targets และมี cpmTarget แล้ว
+    if (activeTab === 'team' && teamFilter && !isCheckingAuth && !isLoadingTargets && currentTargets.cpmTarget > 0) {
+      fetchData(false)
+    }
+  }, [activeTab, teamFilter, monthFilter, yearFilter, isCheckingAuth, isLoadingTargets, currentTargets.cpmTarget])
   
-  // Fetch ข้อมูลเมื่อสลับแท็บ และแสดง cache ก่อน
+  // Fetch ข้อมูล Adser เมื่อเลือก Adser หรือ filter เปลี่ยน
   useEffect(() => {
-    console.log('🔄 Tab/Adser changed:', activeTab, 'selectedAdser:', selectedAdser)
-
-    if (activeTab === 'team') {
-      console.log('📦 Team cache:', teamDataCache.length, 'rows')
-      // แสดง cache ก่อนถ้ามี
-      if (teamDataCache.length > 0) {
-        console.log('✅ Using team cache')
-        setData(teamDataCache)
-        if (headers.length === 0) {
-          setHeaders(COLUMN_ORDER)
-        }
-        // คืน scroll ทันทีเมื่อแสดง cache (ทั้งแนวตั้งและแนวนอน)
-        requestAnimationFrame(() => {
-          if (bodyScrollRef.current) {
-            bodyScrollRef.current.scrollTop = savedScrollPosition
-            bodyScrollRef.current.scrollLeft = savedScrollLeft
-          }
-        })
-      } else {
-        // ถ้าไม่มี cache ให้ fetch ข้อมูลใหม่
-        fetchData(false)
-      }
-    } else if (activeTab === 'adser' && selectedAdser) {
-      const cacheKey = selectedAdser
-      console.log('📦 Adser cache for', cacheKey, ':', adserDataCache[cacheKey]?.length || 0, 'rows')
-      // แสดง cache ของ adser ถ้ามี
-      if (adserDataCache[cacheKey]?.length > 0) {
-        console.log('✅ Using adser cache for', cacheKey)
-        setAdserData(adserDataCache[cacheKey])
-        if (adserHeaders.length === 0) {
-          setAdserHeaders(COLUMN_ORDER)
-        }
-        // คืน scroll ทันทีเมื่อแสดง cache (ทั้งแนวตั้งและแนวนอน)
-        requestAnimationFrame(() => {
-          if (bodyScrollRef.current) {
-            bodyScrollRef.current.scrollTop = savedScrollPosition
-            bodyScrollRef.current.scrollLeft = savedScrollLeft
-          }
-        })
-      } else {
-        // ถ้าไม่มี cache ให้ fetch ข้อมูลใหม่
-        fetchAdserData(false)
-      }
+    if (activeTab === 'adser' && selectedAdser && teamFilter) {
+      fetchAdserData(false)
     }
-  }, [activeTab, selectedAdser])
+  }, [activeTab, selectedAdser, teamFilter, monthFilter, yearFilter])
   
-  // คืนค่า scroll หลังจากข้อมูลเปลี่ยน (ทั้งแนวตั้งและแนวนอน)
-  useEffect(() => {
-    if (activeTab === 'team' && data.length > 0) {
-      requestAnimationFrame(() => {
-        if (bodyScrollRef.current) {
-          bodyScrollRef.current.scrollTop = savedScrollPosition
-          bodyScrollRef.current.scrollLeft = savedScrollLeft
-          console.log('📜 Restored team scroll:', savedScrollPosition, savedScrollLeft)
-        }
-      })
-    }
-  }, [data])
-  
-  useEffect(() => {
-    if (activeTab === 'adser' && adserData.length > 0) {
-      requestAnimationFrame(() => {
-        if (bodyScrollRef.current) {
-          bodyScrollRef.current.scrollTop = savedScrollPosition
-          bodyScrollRef.current.scrollLeft = savedScrollLeft
-          console.log('📜 Restored adser scroll:', savedScrollPosition, savedScrollLeft)
-        }
-      })
-    }
-  }, [adserData])
-  
-  useEffect(() => {
-    if (activeTab === 'team' && !isCheckingAuth && currentTargets.cpmTarget > 0) {
-      fetchData(false) // fetch ข้อมูลใหม่เมื่อ filter เปลี่ยน (รอให้โหลด targets เสร็จก่อน)
-    }
-  }, [teamFilter, monthFilter, yearFilter, isCheckingAuth, currentTargets.cpmTarget])
-  useEffect(() => {
-    if (activeTab === 'adser' && selectedAdser) {
-      fetchAdserData(false) // fetch ข้อมูลใหม่เมื่อ filter เปลี่ยน
-    }
-  }, [selectedAdser, teamFilter, monthFilter, yearFilter])
+  // Set default Adser เมื่อมี list
   useEffect(() => {
     if (activeTab === 'adser' && adserList.length > 0 && !selectedAdser) {
       setSelectedAdser(adserList[0])
     }
-  }, [activeTab, adserList, teamFilter])
+  }, [activeTab, adserList])
+
+  // ใช้ข้อมูลจาก cache เมื่อ selectedAdser เปลี่ยน (ถ้ามี)
+  useEffect(() => {
+    if (activeTab === 'adser' && selectedAdser && adserDataCache[selectedAdser]) {
+      console.log('📦 Loading cached data for:', selectedAdser)
+      safeSetAdserData(adserDataCache[selectedAdser], false)
+      setError('') // ล้าง error เมื่อมีข้อมูลจาก cache
+    }
+  }, [selectedAdser, activeTab])
+  
+  // คืนค่า scroll หลังจากข้อมูลเปลี่ยน
+  useEffect(() => {
+    if ((activeTab === 'team' && data.length > 0) || (activeTab === 'adser' && adserData.length > 0)) {
+      requestAnimationFrame(() => {
+        if (bodyScrollRef.current && headerScrollRef.current) {
+          bodyScrollRef.current.scrollTop = savedScrollPosition
+          bodyScrollRef.current.scrollLeft = savedScrollLeft
+          headerScrollRef.current.scrollLeft = savedScrollLeft
+        }
+      })
+    }
+  }, [data, adserData])
   
   // Auto-refresh ทุก 30 วินาที แบบ silent (ไม่แสดง loading)
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('🔄 Auto-refreshing data silently...')
+      // ใช้ ref เพื่อเข้าถึงค่าล่าสุด
+      const currentTab = activeTabRef.current
+      const currentAdser = selectedAdserRef.current
+      const currentTeam = teamFilterRef.current
+      const targets = currentTargetsRef.current
+      
+      // ตรวจสอบว่ามีข้อมูลพื้นฐานครบ (ไม่บล็อกถ้า cpmTarget เป็น 0)
+      if (!currentTeam) {
+        console.warn('⏸️ Auto-refresh skipped: missing team')
+        return
+      }
+      
+      // เพิ่มการตรวจสอบสำหรับ ADMIN users
+      if (userRole === 'ADMIN') {
+        console.log('👨‍💼 ADMIN user auto-refresh - extra checks')
+        // สำหรับ ADMIN ตรวจสอบว่ามีข้อมูลอยู่แล้วหรือไม่
+        if (currentTab === 'adser' && (!currentAdser || adserData.length === 0)) {
+          console.log('⏸️ ADMIN: Skipping auto-refresh - no adser data to preserve')
+          return
+        }
+      }
       
       // บันทึก scroll position ก่อน refresh
       if (bodyScrollRef.current) {
-        const currentScrollTop = bodyScrollRef.current.scrollTop
-        const currentScrollLeft = bodyScrollRef.current.scrollLeft
-        setSavedScrollPosition(currentScrollTop)
-        setSavedScrollLeft(currentScrollLeft)
-        console.log('📍 Saved scroll position:', { top: currentScrollTop, left: currentScrollLeft })
+        setSavedScrollPosition(bodyScrollRef.current.scrollTop)
+        setSavedScrollLeft(bodyScrollRef.current.scrollLeft)
       }
       
-      if (activeTab === 'team') {
+      console.log('🔄 Auto-refresh triggered', { 
+        tab: currentTab, 
+        adser: currentAdser, 
+        team: currentTeam,
+        userRole: userRole,
+        hasAdserData: adserData.length > 0,
+        cacheKeys: Object.keys(adserDataCache),
+        cachedDataForCurrentAdser: currentAdser ? adserDataCache[currentAdser]?.length || 0 : 0
+      })
+      
+      if (currentTab === 'team') {
         fetchData(true) // silent mode
-      } else if (activeTab === 'adser' && selectedAdser) {
-        fetchAdserData(true) // silent mode
+      } else if (currentTab === 'adser') {
+        if (currentAdser) {
+          console.log('🔄 Calling fetchAdserData for:', currentAdser)
+          fetchAdserData(true) // silent mode
+        } else {
+          console.warn('⚠️ Auto-refresh adser: No selected adser, checking cache and setting default')
+          // ถ้าไม่มี selectedAdser แต่มี adserList ให้เลือกค่าแรก
+          const currentAdserList = teamFilter ? (TEAM_MEMBERS[teamFilter] || []) : []
+          if (currentAdserList.length > 0) {
+            console.log('🔄 Setting default adser:', currentAdserList[0])
+            setSelectedAdser(currentAdserList[0])
+          }
+        }
       }
     }, 30000) // 30 วินาที
+    
     return () => clearInterval(interval)
-  }, [activeTab, selectedAdser])
+  }, [userRole]) // เพิ่ม userRole เป็น dependency
   
   useEffect(() => {
     const bodyScroll = bodyScrollRef.current
     const headerScroll = headerScrollRef.current
-    if (!bodyScroll || !headerScroll) {
-      console.log('⚠️ Refs not ready:', { bodyScroll, headerScroll })
-      return
-    }
-    console.log('✅ Sync scroll initialized')
+    if (!bodyScroll || !headerScroll) return
     
     // กู้คืน scroll position ถ้ามีค่าที่บันทึกไว้
     if (savedScrollPosition > 0 || savedScrollLeft > 0) {
-      console.log('🔄 Restoring scroll position:', { top: savedScrollPosition, left: savedScrollLeft })
       bodyScroll.scrollTop = savedScrollPosition
       bodyScroll.scrollLeft = savedScrollLeft
       headerScroll.scrollLeft = savedScrollLeft
@@ -742,18 +902,26 @@ export default function OverviewPage() {
     return cleanDateStr === todayStr
   }
   const generateFullMonthData = (filteredData: SheetData[]) => {
-    if (!monthFilter || !yearFilter) {
+    // ถ้าไม่ได้เลือกเดือนและปี ให้แสดงข้อมูลที่มีทั้งหมด
+    if (!monthFilter || !yearFilter || monthFilter === 'ทั้งหมด' || yearFilter === 'ทั้งหมด') {
+      console.log('📊 No month/year filter, showing all data:', filteredData.length, 'rows')
       return filteredData
     }
+    
     const thaiMonths = [
       'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
       'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
     ]
     const monthIndex = thaiMonths.indexOf(monthFilter)
-    if (monthIndex === -1) return filteredData
+    if (monthIndex === -1) {
+      console.log('⚠️ Invalid month filter:', monthFilter)
+      return filteredData
+    }
+    
     const year = parseInt(yearFilter)
     const month = monthIndex + 1 // 1-12
     const daysInMonth = new Date(year, month, 0).getDate()
+    
     const dataMap = new Map<number, SheetData>()
     filteredData.forEach(row => {
       const dateValue = row['วันที่'] || row['Date'] || row['date'] || row['วัน'] || ''
@@ -765,8 +933,10 @@ export default function OverviewPage() {
         }
       }
     })
-    console.log('📊 Data available for days:', Array.from(dataMap.keys()).sort((a, b) => a - b))
-    console.log('📅 Creating full month for:', monthFilter, yearFilter, '- Days:', daysInMonth)
+    
+    console.log('� Creating full month for:', monthFilter, yearFilter, '- Days:', daysInMonth)
+    console.log('�📊 Data available for days:', Array.from(dataMap.keys()).sort((a, b) => a - b))
+    
     const fullMonthData: SheetData[] = []
     for (let day = 1; day <= daysInMonth; day++) {
       if (dataMap.has(day)) {
@@ -858,35 +1028,38 @@ export default function OverviewPage() {
   const displayData = activeTab === 'team' ? fullMonthData : filteredAdserData
   const currentHeaders = activeTab === 'team' ? headers : adserHeaders
   
-  // Debug log
-  console.log('📊 Display Data Debug:', {
+  console.log('📊 Display Data:', {
     activeTab,
-    dataLength: data.length,
-    filteredDataLength: filteredData.length,
-    fullMonthDataLength: fullMonthData.length,
-    displayDataLength: displayData.length,
+    dataLength: displayData.length,
     headersLength: currentHeaders.length,
-    teamFilter,
-    monthFilter,
-    yearFilter
+    firstRow: displayData[0]
   })
   
-  const displayHeaders = COLUMN_ORDER.filter(orderedColumn => {
-    const exists = currentHeaders.length === 0 || currentHeaders.includes(orderedColumn)
-    const isHidden = ['Team', 'team', 'Adser', 'adser'].includes(orderedColumn)
-    return exists && !isHidden
+  // กรองเฉพาะคอลัมน์ที่ต้องการแสดงตาม COLUMN_ORDER และซ่อน Team/Adser
+  const displayHeaders = COLUMN_ORDER.filter(col => {
+    // ซ่อนคอลัมน์ Team และ Adser
+    if (['Team', 'team', 'Adser', 'adser'].includes(col)) {
+      return false
+    }
+    // ถ้าไม่มี headers จาก API ให้แสดงทุกคอลัมน์ใน COLUMN_ORDER
+    if (currentHeaders.length === 0) {
+      return true
+    }
+    // ถ้ามี headers จาก API ให้แสดงเฉพาะที่มีในข้อมูล
+    return currentHeaders.includes(col)
   })
+  
+  console.log('📋 Display Headers:', displayHeaders.length, 'columns')
+  
   const rightAlignColumns = ['Planned_Spend/Day', 'Spend', 'New Player Revenue (THB)']
   const columnWidths: { [key: string]: number } = {
     'Date': 90,
     'KPI_Budget_Used': 75,
-    'KPI_Budget Used': 90,
     'Planned_Messages': 75,
     'Total_Messages': 75,
     'Messages(Meta)': 75,
     'Lost_Messages': 75,
     'Net_Messages': 85,
-    'Net_Messages_Pure': 85,
     'Planned_Spend/Day': 85,
     'Spend': 85,
     'CPM': 75,
@@ -920,7 +1093,6 @@ export default function OverviewPage() {
     const zoneStarts = [
       'Date',
       'KPI_Budget_Used',
-      'KPI_Budget Used',
       'Planned_Spend/Day',
       'CPM',
       'New Player Revenue (THB)',
@@ -987,7 +1159,253 @@ export default function OverviewPage() {
     
     return value
   }
+  
+  // ฟังก์ชันกำหนดสีแบบ hard-coded สำหรับ %KPI/Budget
+  const getKPIBudgetStyle = (value: string, isSummaryRow: boolean = false): React.CSSProperties => {
+    const baseStyle: React.CSSProperties = { 
+      fontSize: '13px',
+      fontWeight: isSummaryRow ? 'bold' : 'normal'
+    }
+    
+    // แยกค่า % ออกมา
+    const numValue = parseFloat(String(value).replace('%', ''))
+    if (isNaN(numValue)) return baseStyle
+    
+    // กำหนดสีตามเกณฑ์
+    if (numValue < 50) {
+      // น้อยกว่า 50% → สีแดง
+      baseStyle.backgroundColor = '#fee2e2' // red-100
+      baseStyle.color = '#991b1b' // red-800
+    } else if (numValue >= 50 && numValue < 80) {
+      // 50-80% → สีส้ม
+      baseStyle.backgroundColor = '#fed7aa' // orange-200
+      baseStyle.color = '#9a3412' // orange-800
+    } else if (numValue >= 80 && numValue < 100) {
+      // 80-100% → สีฟ้า
+      baseStyle.backgroundColor = '#bfdbfe' // blue-200
+      baseStyle.color = '#1e40af' // blue-800
+    } else {
+      // 100% ขึ้นไป → สีเขียว
+      baseStyle.backgroundColor = '#bbf7d0' // green-200
+      baseStyle.color = '#166534' // green-800
+    }
+    
+    return baseStyle
+  }
+  
+  // ฟังก์ชันคำนวณสีสำหรับ CPM เทียบกับเป้า cpmTarget
+  const getCPMStyle = (row: SheetData, isSummaryRow: boolean = false): React.CSSProperties => {
+    const baseStyle: React.CSSProperties = { 
+      fontSize: '13px',
+      fontWeight: isSummaryRow ? 'bold' : 'normal'
+    }
+    
+    // ดึงค่า CPM จริง
+    const actualCPM = parseFloat(String(row['CPM'] || '0'))
+    const targetCPM = currentTargetsRef.current.cpmTarget
+    
+    // ถ้าไม่มีเป้าหรือค่าไม่ถูกต้อง ไม่ใส่สี
+    if (isNaN(actualCPM) || targetCPM === 0) {
+      return baseStyle
+    }
+    
+    // คำนวณ % = (Actual CPM / Target CPM) × 100
+    const percentage = (actualCPM / targetCPM) * 100
+    
+    // กำหนดสีตามเกณฑ์ใหม่ (CPM ต่ำกว่าดีกว่า)
+    if (percentage > 120) {
+      // > 120% → สีแดงเข้ม (CPM สูงเกินไป)
+      baseStyle.backgroundColor = '#fca5a5' // red-300
+      baseStyle.color = '#7f1d1d' // red-900
+    } else if (percentage > 100) {
+      // > 100% → สีแดง (CPM สูงกว่าเป้า)
+      baseStyle.backgroundColor = '#fecaca' // red-200
+      baseStyle.color = '#991b1b' // red-800
+    } else {
+      // ≤ 100% → สีเขียว (CPM ต่ำกว่าหรือเท่ากับเป้า - ดี!)
+      baseStyle.backgroundColor = '#bbf7d0' // green-200
+      baseStyle.color = '#166534' // green-800
+    }
+    
+    return baseStyle
+  }
+  
+  // ฟังก์ชันคำนวณสีสำหรับ Cost_per_Top_up_Pure เทียบกับเป้า costPerTopupTarget
+  const getCostPerTopupStyle = (row: SheetData, isSummaryRow: boolean = false): React.CSSProperties => {
+    const baseStyle: React.CSSProperties = { 
+      fontSize: '13px',
+      fontWeight: isSummaryRow ? 'bold' : 'normal'
+    }
+    
+    // ดึงค่า Cost_per_Top_up_Pure จริง
+    const actualCost = parseFloat(String(row['Cost_per_Top_up_Pure'] || '0').replace(/[฿$,]/g, ''))
+    const targetCost = currentTargetsRef.current.costPerTopupTarget
+    
+    // ถ้าไม่มีเป้าหรือค่าไม่ถูกต้อง ไม่ใส่สี
+    if (isNaN(actualCost) || targetCost === 0) {
+      return baseStyle
+    }
+    
+    // คำนวณ % = (Actual Cost / Target Cost) × 100
+    const percentage = (actualCost / targetCost) * 100
+    
+    // กำหนดสีตามเกณฑ์ (ต้นทุนต่ำกว่าดีกว่า)
+    if (percentage > 120) {
+      // > 120% → สีแดงเข้ม (ต้นทุนสูงเกินไป)
+      baseStyle.backgroundColor = '#fca5a5' // red-300
+      baseStyle.color = '#7f1d1d' // red-900
+    } else if (percentage > 100) {
+      // > 100% → สีแดง (ต้นทุนสูงกว่าเป้า)
+      baseStyle.backgroundColor = '#fecaca' // red-200
+      baseStyle.color = '#991b1b' // red-800
+    } else {
+      // ≤ 100% → สีเขียว (ต้นทุนต่ำกว่าหรือเท่ากับเป้า - ดี!)
+      baseStyle.backgroundColor = '#bbf7d0' // green-200
+      baseStyle.color = '#166534' // green-800
+    }
+    
+    return baseStyle
+  }
+  
+  // ฟังก์ชันคำนวณสีสำหรับ Lost_Messages, Duplicate, Under_18 (ยิ่งน้อยยิ่งดี - เปรียบเทียบกับเป้า %)
+  const getQualityMetricsStyle = (row: SheetData, header: string, isSummaryRow: boolean = false): React.CSSProperties => {
+    const baseStyle: React.CSSProperties = { 
+      fontSize: '13px',
+      fontWeight: isSummaryRow ? 'bold' : 'normal'
+    }
+    
+    // ดึงค่าจริงจากข้อมูล (เป็น % แล้ว ถ้าอยู่ในโหมด percent)
+    let actualValue = 0
+    const totalMessages = parseFloat(String(row['Total_Messages'] || '0').replace(/,/g, ''))
+    
+    if (header === 'Lost_Messages') {
+      const lostMessages = parseFloat(String(row['Lost_Messages'] || '0').replace(/,/g, ''))
+      if (totalMessages > 0) {
+        actualValue = (lostMessages / totalMessages) * 100
+      }
+    } else if (header === 'Duplicate') {
+      const duplicate = parseFloat(String(row['Duplicate'] || '0').replace(/,/g, ''))
+      if (totalMessages > 0) {
+        actualValue = (duplicate / totalMessages) * 100
+      }
+    } else if (header === 'Under_18') {
+      const under18 = parseFloat(String(row['Under_18'] || '0').replace(/,/g, ''))
+      if (totalMessages > 0) {
+        actualValue = (under18 / totalMessages) * 100
+      }
+    }
+    
+    // ดึงเป้าหมาย
+    let targetValue = 0
+    if (header === 'Lost_Messages') {
+      targetValue = currentTargetsRef.current.lostMessagesTarget
+    } else if (header === 'Duplicate') {
+      targetValue = currentTargetsRef.current.duplicateTarget
+    } else if (header === 'Under_18') {
+      targetValue = currentTargetsRef.current.under18Target
+    }
+    
+    // ถ้าไม่มีเป้า ไม่ใส่สี
+    if (targetValue === 0) {
+      return baseStyle
+    }
+    
+    // กำหนดสี: ยิ่งน้อยยิ่งดี
+    if (actualValue <= targetValue) {
+      // ≤ เป้า → สีเขียว (ดี!)
+      baseStyle.backgroundColor = '#bbf7d0' // green-200
+      baseStyle.color = '#166534' // green-800
+    } else if (actualValue <= targetValue * 1.2) {
+      // เกินเป้าไม่เกิน 20% → สีแดง
+      baseStyle.backgroundColor = '#fecaca' // red-200
+      baseStyle.color = '#991b1b' // red-800
+    } else {
+      // เกินเป้ามากกว่า 20% → สีแดงเข้ม
+      baseStyle.backgroundColor = '#fca5a5' // red-300
+      baseStyle.color = '#7f1d1d' // red-900
+    }
+    
+    return baseStyle
+  }
+  
+  // ฟังก์ชันคำนวณสีสำหรับ Total_Messages และ Planned_Messages
+  const getMessagesStyle = (row: SheetData, header: string, isSummaryRow: boolean = false): React.CSSProperties => {
+    const baseStyle: React.CSSProperties = { 
+      fontSize: '13px',
+      fontWeight: isSummaryRow ? 'bold' : 'normal'
+    }
+    
+    // Planned_Messages ไม่ใส่สี
+    if (header === 'Planned_Messages') {
+      return baseStyle
+    }
+    
+    // เฉพาะ Total_Messages เท่านั้นที่มีสี
+    if (header !== 'Total_Messages') {
+      return baseStyle
+    }
+    
+    // ดึงค่า Total_Messages และ Planned_Messages
+    const actualMessages = parseFloat(String(row['Total_Messages'] || '0').replace(/,/g, ''))
+    const plannedMessages = parseFloat(String(row['Planned_Messages'] || '0').replace(/,/g, ''))
+    
+    // ถ้าไม่มีแผนทัก หรือค่าไม่ถูกต้อง ไม่ใส่สี
+    if (isNaN(actualMessages) || isNaN(plannedMessages) || plannedMessages === 0) {
+      return baseStyle
+    }
+    
+    // คำนวณ %
+    const percentage = (actualMessages / plannedMessages) * 100
+    
+    // กำหนดสีตามเกณฑ์ใหม่
+    if (percentage < 50) {
+      // < 50% → สีแดงเข้ม
+      baseStyle.backgroundColor = '#fca5a5' // red-300
+      baseStyle.color = '#7f1d1d' // red-900
+    } else if (percentage >= 50 && percentage < 80) {
+      // 50-80% → สีแดง
+      baseStyle.backgroundColor = '#fecaca' // red-200
+      baseStyle.color = '#991b1b' // red-800
+    } else if (percentage >= 80 && percentage < 100) {
+      // 80-100% → สีส้ม
+      baseStyle.backgroundColor = '#fed7aa' // orange-200
+      baseStyle.color = '#9a3412' // orange-800
+    } else {
+      // ≥ 100% → สีเขียว
+      baseStyle.backgroundColor = '#bbf7d0' // green-200
+      baseStyle.color = '#166534' // green-800
+    }
+    
+    return baseStyle
+  }
+  
   const getCellStyle = (row: SheetData, header: string): React.CSSProperties => {
+    // ถ้าเป็นคอลัมน์ %KPI/Budget ให้ใช้สีพิเศษ
+    if (header === 'KPI_Budget_Used') {
+      const value = row[header] || ''
+      return getKPIBudgetStyle(value)
+    }
+    
+    // ถ้าเป็นคอลัมน์ CPM ให้ใช้สีตาม % เทียบกับเป้า
+    if (header === 'CPM') {
+      return getCPMStyle(row)
+    }
+    
+    // ถ้าเป็นคอลัมน์ Cost_per_Top_up_Pure ให้ใช้สีตาม % เทียบกับเป้า
+    if (header === 'Cost_per_Top_up_Pure') {
+      return getCostPerTopupStyle(row)
+    }
+    
+    // ถ้าเป็นคอลัมน์ Total_Messages ให้ใช้สีตาม %
+    if (header === 'Total_Messages') {
+      return getMessagesStyle(row, header)
+    }
+    
+    // ถ้าเป็นคอลัมน์ Lost_Messages, Duplicate, Under_18 ให้ใช้สีตามเป้า %
+    if (header === 'Lost_Messages' || header === 'Duplicate' || header === 'Under_18') {
+      return getQualityMetricsStyle(row, header)
+    }
+    
     const style: React.CSSProperties = { fontSize: '13px' }
     let team = row['team'] || row['Team'] || row['ทีม'] || ''
     if (activeTab === 'adser' && teamFilter) {
@@ -1037,6 +1455,51 @@ export default function OverviewPage() {
     return style
   }
   const getSummaryCellStyle = (header: string, value: string): React.CSSProperties => {
+    // ถ้าเป็นคอลัมน์ %KPI/Budget ให้ใช้สีพิเศษ
+    if (header === 'KPI_Budget_Used') {
+      return getKPIBudgetStyle(value, true) // true = summary row
+    }
+    
+    // ถ้าเป็นคอลัมน์ CPM ในแถวรวม
+    if (header === 'CPM') {
+      // สร้าง row object จาก summaryRow
+      const summaryRowData: SheetData = {}
+      displayHeaders.forEach(h => {
+        summaryRowData[h] = summaryRow[h] || ''
+      })
+      return getCPMStyle(summaryRowData, true) // true = summary row
+    }
+    
+    // ถ้าเป็นคอลัมน์ Cost_per_Top_up_Pure ในแถวรวม
+    if (header === 'Cost_per_Top_up_Pure') {
+      // สร้าง row object จาก summaryRow
+      const summaryRowData: SheetData = {}
+      displayHeaders.forEach(h => {
+        summaryRowData[h] = summaryRow[h] || ''
+      })
+      return getCostPerTopupStyle(summaryRowData, true) // true = summary row
+    }
+    
+    // ถ้าเป็นคอลัมน์ Total_Messages ในแถวรวม
+    if (header === 'Total_Messages') {
+      // สร้าง row object จาก summaryRow
+      const summaryRowData: SheetData = {}
+      displayHeaders.forEach(h => {
+        summaryRowData[h] = summaryRow[h] || ''
+      })
+      return getMessagesStyle(summaryRowData, header, true) // true = summary row
+    }
+    
+    // ถ้าเป็นคอลัมน์ Lost_Messages, Duplicate, Under_18 ในแถวรวม
+    if (header === 'Lost_Messages' || header === 'Duplicate' || header === 'Under_18') {
+      // สร้าง row object จาก summaryRow
+      const summaryRowData: SheetData = {}
+      displayHeaders.forEach(h => {
+        summaryRowData[h] = summaryRow[h] || ''
+      })
+      return getQualityMetricsStyle(summaryRowData, header, true) // true = summary row
+    }
+    
     const style: React.CSSProperties = { 
       fontSize: '13px', 
       
@@ -1154,42 +1617,39 @@ export default function OverviewPage() {
         }
         return
       }
+      
+      // คำนวณ %KPI/Budget สำหรับแถวรวม
       if (header === 'KPI_Budget_Used') {
         const totalMessages = displayData
-          .map(row => parseFloat(String(row['Total_Messages'] || '0').replace(/,/g, '')))
+          .map(row => parseFloat(row['Total_Messages'] || '0'))
           .filter(v => !isNaN(v))
           .reduce((sum, v) => sum + v, 0)
+        
         const totalSpend = displayData
-          .map(row => parseFloat(String(row['Spend'] || '0').replace(/[$,]/g, '')))
+          .map(row => parseFloat((row['Spend'] || '0').toString().replace(/[฿$,]/g, '')))
           .filter(v => !isNaN(v))
           .reduce((sum, v) => sum + v, 0)
-        const cpmTarget = currentTargets.cpmTarget || 15 // ใช้เป้า CPM จากการตั้งค่า
         
-        console.log('📊 KPI_Budget_Used calculation:', {
-          totalMessages,
-          totalSpend,
-          cpmTarget,
-          budget: totalSpend / cpmTarget,
-          percentage: totalMessages / (totalSpend / cpmTarget) * 100,
-          displayDataLength: displayData.length
-        })
-        
-        if (totalSpend > 0 && cpmTarget > 0) {
-          summary[header] = ((totalMessages / (totalSpend / cpmTarget)) * 100).toFixed(2) + '%'
+        if (currentTargetsRef.current.cpmTarget > 0 && totalSpend > 0) {
+          const kpiValue = (totalMessages / (totalSpend / currentTargetsRef.current.cpmTarget)) * 100
+          summary[header] = kpiValue.toFixed(2) + '%'
         } else {
           summary[header] = '0.00%'
         }
         return
       }
+      
       const sampleValue = displayData.find(row => row[header])
       const hasPercentSign = sampleValue ? String(sampleValue[header] || '').includes('%') : false
       const isPercentageColumn = percentageColumns.includes(header)
+      
+      // แก้ไข: ไม่ให้ percentage columns ในโหมด percent ไปอยู่ใน isAverageCol
       const isAverageCol = hasPercentSign || 
                            header.includes('KPI') ||
                            header === 'Cost_per_Message_(Meta)' ||
-                           (displayMode === 'percent' && isPercentageColumn)
+                           (displayMode === 'percent' && isPercentageColumn && false) // ปิดเพื่อให้ไปใช้ logic ใหม่
       
-      // คอลัมน์ที่ต้องจัดรูปแบบตัวเลข
+      // คอลัมน์ที่ต้องจัดรูปแบบตัวเลข (แต่ต้องตรวจสอบโหมด percentage ก่อน)
       const numberColumns = [
         'Planned_Messages',
         'Total_Messages',
@@ -1226,6 +1686,24 @@ export default function OverviewPage() {
           minimumFractionDigits: 2, 
           maximumFractionDigits: 2 
         })
+        return
+      }
+      
+      // ตรวจสอบว่าเป็น percentage columns และอยู่ในโหมด percent หรือไม่
+      if (displayMode === 'percent' && percentageColumns.includes(header)) {
+        // คำนวณ percentage สำหรับ Total row
+        const sum = values.reduce((sum, v) => sum + v, 0)
+        const totalMessagesSum = displayData
+          .map(row => parseFloat(String(row['Total_Messages'] || '0').replace(/,/g, '')))
+          .filter(v => !isNaN(v))
+          .reduce((sum, v) => sum + v, 0)
+        
+        if (totalMessagesSum > 0) {
+          const percentValue = (sum / totalMessagesSum) * 100
+          summary[header] = percentValue.toFixed(2) + '%'
+        } else {
+          summary[header] = '0.00%'
+        }
         return
       }
       
@@ -1267,19 +1745,8 @@ export default function OverviewPage() {
         }
       } else {
         const sum = values.reduce((sum, v) => sum + v, 0)
-        if (displayMode === 'percent' && isPercentageColumn) {
-          const totalMessagesSum = displayData
-            .map(row => parseFloat(row['Total_Messages'] || '0'))
-            .filter(v => !isNaN(v))
-            .reduce((sum, v) => sum + v, 0)
-          if (totalMessagesSum > 0) {
-            const percentValue = (sum / totalMessagesSum) * 100
-            summary[header] = percentValue.toFixed(2) + '%'
-          } else {
-            summary[header] = sum.toLocaleString('en-US', { maximumFractionDigits: 2 })
-          }
-        }
-        else if (displayData[0] && String(displayData[0][header] || '').includes('$')) {
+        // สำหรับคอลัมน์อื่นๆ ที่ไม่ใช่ percentage columns ในโหมด percent
+        if (displayData[0] && String(displayData[0][header] || '').includes('$')) {
           summary[header] = '$' + sum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         } 
         else if (displayData[0] && String(displayData[0][header] || '').includes('฿')) {
@@ -1291,7 +1758,7 @@ export default function OverviewPage() {
       }
     })
     return summary
-  }, [displayData, displayHeaders, displayMode, currentTargets.cpmTarget, exchangeRate])
+  }, [displayData, displayHeaders, displayMode, exchangeRate])
   
   if (isCheckingAuth) {
     return <LoadingScreen message="กำลังตรวจสอบสิทธิ์..." />
@@ -1457,6 +1924,69 @@ export default function OverviewPage() {
                       />
                     ) : (
                       <div className="text-xs">{currentTargets.costPerTopupTarget.toFixed(2)}</div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label htmlFor="target-lost" className="text-xs text-muted-foreground">
+                      เป้ายอดเสีย (%)
+                    </Label>
+                    {userRole === 'ADMIN' ? (
+                      <div className="relative">
+                        <Input
+                          id="target-lost"
+                          type="number"
+                          step="0.1"
+                          value={currentTargets.lostMessagesTarget}
+                          onChange={(e) => updateTeamTarget('lostMessagesTarget', parseFloat(e.target.value) || 0)}
+                          className="h-8 text-xs pr-6"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs">{currentTargets.lostMessagesTarget.toFixed(1)}%</div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label htmlFor="target-duplicate" className="text-xs text-muted-foreground">
+                      เป้าทักซ้ำ (%)
+                    </Label>
+                    {userRole === 'ADMIN' ? (
+                      <div className="relative">
+                        <Input
+                          id="target-duplicate"
+                          type="number"
+                          step="0.1"
+                          value={currentTargets.duplicateTarget}
+                          onChange={(e) => updateTeamTarget('duplicateTarget', parseFloat(e.target.value) || 0)}
+                          className="h-8 text-xs pr-6"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs">{currentTargets.duplicateTarget.toFixed(1)}%</div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label htmlFor="target-under18" className="text-xs text-muted-foreground">
+                      เป้าเด็ก (%)
+                    </Label>
+                    {userRole === 'ADMIN' ? (
+                      <div className="relative">
+                        <Input
+                          id="target-under18"
+                          type="number"
+                          step="0.1"
+                          value={currentTargets.under18Target}
+                          onChange={(e) => updateTeamTarget('under18Target', parseFloat(e.target.value) || 0)}
+                          className="h-8 text-xs pr-6"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs">{currentTargets.under18Target.toFixed(1)}%</div>
                     )}
                   </div>
                   
@@ -1987,7 +2517,7 @@ export default function OverviewPage() {
                           key={rowIndex}
                           className={`border-b border-gray-100 dark:border-gray-800 transition-all duration-150 ${
                             isTodayRow
-                              ? 'bg-orange-300 dark:bg-orange-800/60 hover:bg-orange-400 dark:hover:bg-orange-800/80 font-semibold' 
+                              ? 'bg-orange-400 dark:bg-orange-700/70 hover:bg-orange-500 dark:hover:bg-orange-700/90' 
                               : rowIndex % 2 === 0 
                                 ? 'bg-gray-50 dark:bg-gray-900/20 hover:bg-gray-100 dark:hover:bg-gray-900/40'
                                 : 'bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900/50'

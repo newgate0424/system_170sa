@@ -25,7 +25,9 @@ export async function GET(request: NextRequest) {
           coverTarget: 1.0,
           cpmTarget: 15,
           costPerTopupTarget: 100,
-          exchangeRate: 35
+          lostMessagesTarget: 0,
+          duplicateTarget: 0,
+          under18Target: 0,
         }
       })
     }
@@ -44,7 +46,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { team, coverTarget, cpmTarget, costPerTopupTarget, exchangeRate } = body
+    const { 
+      team, 
+      coverTarget, 
+      cpmTarget, 
+      costPerTopupTarget, 
+      lostMessagesTarget,
+      duplicateTarget,
+      under18Target,
+    } = body
 
     if (!team) {
       return NextResponse.json({ error: 'Team is required' }, { status: 400 })
@@ -57,14 +67,18 @@ export async function POST(request: NextRequest) {
         coverTarget: coverTarget ?? 1.0,
         cpmTarget: cpmTarget ?? 15,
         costPerTopupTarget: costPerTopupTarget ?? 100,
-        exchangeRate: exchangeRate ?? 35
+        lostMessagesTarget: lostMessagesTarget ?? 0,
+        duplicateTarget: duplicateTarget ?? 0,
+        under18Target: under18Target ?? 0,
       },
       create: {
         team,
         coverTarget: coverTarget ?? 1.0,
         cpmTarget: cpmTarget ?? 15,
         costPerTopupTarget: costPerTopupTarget ?? 100,
-        exchangeRate: exchangeRate ?? 35
+        lostMessagesTarget: lostMessagesTarget ?? 0,
+        duplicateTarget: duplicateTarget ?? 0,
+        under18Target: under18Target ?? 0,
       }
     })
 
