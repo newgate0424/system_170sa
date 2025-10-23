@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -120,6 +120,7 @@ const getCurrentMonth = () => {
 export default function OverviewPage() {
   const { t, language } = useLanguage()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [data, setData] = useState<SheetData[]>([])
   const [headers, setHeaders] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -169,12 +170,39 @@ export default function OverviewPage() {
     if (!translation) return header
     return language === 'th' ? translation.th : translation.en
   }
-  const [teamFilter, setTeamFilter] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('overview_teamFilter') || 'สาวอ้อย'
+  
+  // อ่านค่าจาก URL query parameters
+  const getInitialTeam = () => {
+    const viewParam = searchParams.get('view')
+    if (viewParam) {
+      const parts = viewParam.split('/')
+      const teamName = parts[0]
+      // แปลงจาก URL-friendly name กลับเป็นชื่อทีมจริง
+      const teamMap: { [key: string]: string } = {
+        'aoy': 'สาวอ้อย',
+        'alin': 'อลิน',
+        'anyaC': 'อัญญาC',
+        'anyaD': 'อัญญาD',
+        'spezbar': 'สเปชบาร์',
+        'barlance': 'บาล้าน',
+        'football': 'ฟุตบอลแอร์เรีย',
+        'footballharu': 'ฟุตบอลแอร์เรีย(ฮารุ)',
+      }
+      return teamMap[teamName] || 'สาวอ้อย'
     }
     return 'สาวอ้อย'
-  })
+  }
+  
+  const getInitialAdser = () => {
+    const viewParam = searchParams.get('view')
+    if (viewParam && viewParam.includes('/')) {
+      const parts = viewParam.split('/')
+      return parts[1] || ''
+    }
+    return ''
+  }
+  
+  const [teamFilter, setTeamFilter] = useState(getInitialTeam())
   
   // Custom setter ที่บันทึก scroll ก่อนเปลี่ยนทีม
   const handleTeamFilterChange = (newTeam: string) => {
@@ -184,6 +212,8 @@ export default function OverviewPage() {
       console.log('💾 Team change: Saving scroll', bodyScrollRef.current.scrollTop, bodyScrollRef.current.scrollLeft)
     }
     setTeamFilter(newTeam)
+    // อัพเดท URL
+    updateURL(newTeam, activeTab === 'adser' ? selectedAdser : '')
   }
   const [monthFilter, setMonthFilter] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -204,7 +234,12 @@ export default function OverviewPage() {
     return 'percent'
   })
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date())
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('overview_isSidebarCollapsed') === 'true'
+    }
+    return false
+  })
   const headerScrollRef = useRef<HTMLDivElement>(null)
   const bodyScrollRef = useRef<HTMLDivElement>(null)
   const [scrollbarWidth, setScrollbarWidth] = useState(0)
@@ -313,6 +348,13 @@ export default function OverviewPage() {
     }
   }, [teamFilter, isCheckingAuth])
   
+  // อัพเดท URL เมื่อโหลดหน้าครั้งแรก (ถ้ายังไม่มี view parameter)
+  useEffect(() => {
+    if (!searchParams.get('view') && teamFilter) {
+      updateURL(teamFilter, selectedAdser)
+    }
+  }, [])
+  
   useEffect(() => {
     const calculateScrollbarWidth = () => {
       const outer = document.createElement('div')
@@ -347,20 +389,34 @@ export default function OverviewPage() {
     return () => clearInterval(interval)
   }, [])
   
-  const [activeTab, setActiveTab] = useState<'team' | 'adser'>('team')
+  const initialAdser = getInitialAdser()
+  const [activeTab, setActiveTab] = useState<'team' | 'adser'>(initialAdser ? 'adser' : 'team')
   const [adserData, setAdserData] = useState<SheetData[]>([])
   const [adserHeaders, setAdserHeaders] = useState<string[]>([])
-  const [selectedAdser, setSelectedAdser] = useState<string>('')
+  const [selectedAdser, setSelectedAdser] = useState<string>(initialAdser)
   const adserList = teamFilter ? (TEAM_MEMBERS[teamFilter] || []) : []
   
-  // Wrapper function สำหรับป้องกันการล้างข้อมูลในโหมด silent
-  const safeSetAdserData = (newData: SheetData[], isSilentMode = false) => {
-    if (isSilentMode && (!newData || newData.length === 0)) {
-      console.log('🛡️ Protected: Not clearing adser data in silent mode')
-      return // ไม่ล้างข้อมูลในโหมด silent
+  // ฟังก์ชันแปลงชื่อทีมเป็น URL-friendly
+  const getTeamSlug = (team: string): string => {
+    const slugMap: { [key: string]: string } = {
+      'สาวอ้อย': 'aoy',
+      'อลิน': 'alin',
+      'อัญญาC': 'anyaC',
+      'อัญญาD': 'anyaD',
+      'สเปชบาร์': 'spezbar',
+      'บาล้าน': 'barlance',
+      'ฟุตบอลแอร์เรีย': 'football',
+      'ฟุตบอลแอร์เรีย(ฮารุ)': 'footballharu',
     }
-    console.log('📝 Setting adser data:', newData.length, 'rows, silent:', isSilentMode)
-    setAdserData(newData)
+    return slugMap[team] || 'aoy'
+  }
+  
+  // ฟังก์ชันอัพเดท URL
+  const updateURL = (team: string, adser: string = '') => {
+    const teamSlug = getTeamSlug(team)
+    const viewParam = adser ? `${teamSlug}/${adser}` : teamSlug
+    const newURL = `/overview?view=${viewParam}`
+    router.push(newURL, { scroll: false })
   }
   
   // Refs สำหรับ auto-refresh ใช้ค่าล่าสุดโดยไม่ต้องพึ่ง dependencies
@@ -446,9 +502,7 @@ export default function OverviewPage() {
     'Over_50',
     'Foreign'
   ]
-  useEffect(() => {
-    sessionStorage.setItem('overview_teamFilter', teamFilter)
-  }, [teamFilter])
+  // บันทึกค่าฟิลเตอร์ลง sessionStorage (ยกเว้น team และ adser ที่ใช้ URL แทน)
   useEffect(() => {
     sessionStorage.setItem('overview_monthFilter', monthFilter)
   }, [monthFilter])
@@ -458,6 +512,9 @@ export default function OverviewPage() {
   useEffect(() => {
     sessionStorage.setItem('overview_displayMode', displayMode)
   }, [displayMode])
+  useEffect(() => {
+    sessionStorage.setItem('overview_isSidebarCollapsed', String(isSidebarCollapsed))
+  }, [isSidebarCollapsed])
   const fetchColorRules = async () => {
     try {
       const res = await fetch('/api/color-rules')
@@ -564,18 +621,19 @@ export default function OverviewPage() {
       })
       
       if (result.data && Array.isArray(result.data)) {
-        console.log('✅ Setting team data:', result.data.length, 'rows')
+        console.log('✅ Setting team data:', result.data.length, 'rows', silent ? '(silent)' : '')
         setHeaders(result.headers || COLUMN_ORDER)
         setData(result.data)
         setTeamDataCache(result.data)
         setLastRefreshTime(new Date())
-        
-        if (!silent) {
-          console.log('📋 Team data loaded:', result.data.length, 'rows')
-        }
       } else {
         console.warn('⚠️ No data returned from API')
-        if (!silent && teamDataCache.length === 0) {
+        // ในโหมด silent ถ้าไม่มีข้อมูลใหม่ ให้ใช้ cache
+        if (silent && teamDataCache.length > 0) {
+          console.log('� Silent mode: Using cached team data', teamDataCache.length, 'rows')
+          setData(teamDataCache)
+          setLastRefreshTime(new Date())
+        } else if (!silent) {
           setError('ไม่พบข้อมูล')
         }
       }
@@ -632,15 +690,6 @@ export default function OverviewPage() {
         return
       }
       
-      // เพิ่มการป้องกันสำหรับ ADMIN users ในโหมด silent
-      if (silent && userRole === 'ADMIN' && adserData.length > 0) {
-        console.log('👨‍💼 ADMIN silent refresh: Preserving existing data, current rows:', adserData.length)
-        // อัปเดตเวลาแต่ไม่เรียก API เพื่อป้องกันการล้างข้อมูล
-        setLastRefreshTime(new Date())
-        isLoadingAdserDataRef.current = false
-        return
-      }
-      
       const params = new URLSearchParams()
       if (teamFilter) params.append('team', teamFilter)
       if (selectedAdser) params.append('adser', selectedAdser)
@@ -663,18 +712,14 @@ export default function OverviewPage() {
       })
       
       if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-        console.log('✅ Setting adser data:', result.data.length, 'rows')
+        console.log('✅ Setting adser data:', result.data.length, 'rows', silent ? '(silent)' : '')
         setAdserHeaders(result.headers || COLUMN_ORDER)
-        safeSetAdserData(result.data, silent)
+        setAdserData(result.data)
         
         if (selectedAdser) {
           setAdserDataCache(prev => ({ ...prev, [selectedAdser]: result.data }))
         }
         setLastRefreshTime(new Date())
-        
-        if (!silent) {
-          console.log('📋 Adser data loaded:', result.data.length, 'rows')
-        }
       } else {
         console.warn('⚠️ No adser data returned from API or empty array', {
           silent,
@@ -683,20 +728,18 @@ export default function OverviewPage() {
           currentDataLength: adserData.length
         })
         
-        // ในโหมด silent (auto-refresh) ต้องปกป้องข้อมูลเดิมไว้เสมо
-        if (silent) {
-          console.log('🔄 Silent refresh: No new data, PRESERVING existing data. Current data rows:', adserData.length)
-          setLastRefreshTime(new Date()) // อัปเดตเวลา refresh แต่คงข้อมูลเดิมไว้เสมอ
-          // ไม่ทำอะไรกับ adserData เลย เพื่อคงข้อมูลเดิมไว้
-        } else {
-          // ในโหมดปกติ ถ้าไม่มีข้อมูลและไม่มีข้อมูลใน cache ให้แสดง error
+        // ในโหมด silent ถ้าไม่มีข้อมูลใหม่ ให้ใช้ cache
+        if (silent && selectedAdser && adserDataCache[selectedAdser]) {
+          console.log('� Silent mode: Using cached adser data', adserDataCache[selectedAdser].length, 'rows')
+          setAdserData(adserDataCache[selectedAdser])
+          setLastRefreshTime(new Date())
+        } else if (!silent) {
           if (!selectedAdser || !adserDataCache[selectedAdser]) {
             setError('ไม่พบข้อมูล Adser')
-            safeSetAdserData([], false) // ล้างข้อมูลเฉพาะในโหมดปกติ
           } else {
             // ถ้ามีข้อมูลใน cache ให้ใช้ข้อมูลจาก cache
             console.log('📦 Using cached data for:', selectedAdser)
-            safeSetAdserData(adserDataCache[selectedAdser], false)
+            setAdserData(adserDataCache[selectedAdser])
           }
         }
       }
@@ -713,11 +756,13 @@ export default function OverviewPage() {
       })
       
       if (silent) {
-        // ในโหมด silent (auto-refresh) ถ้าเกิด error ให้ log แต่ไม่แสดง error message
-        // และคงข้อมูลเดิมไว้โดยไม่ทำอะไร
-        console.log('🔄 Silent refresh error: PRESERVING existing data. Current data rows:', adserData.length)
-        setLastRefreshTime(new Date()) // อัปเดตเวลาแต่คงข้อมูลเดิมไว้เสมอ
-        // ไม่ทำอะไรกับ adserData และ error state เลย
+        // ในโหมด silent ถ้า error ให้ใช้ cache (ถ้ามี)
+        console.log('🔄 Silent refresh error: Using cache if available')
+        if (selectedAdser && adserDataCache[selectedAdser]) {
+          console.log('📦 Error fallback: Using cached data', adserDataCache[selectedAdser].length, 'rows')
+          setAdserData(adserDataCache[selectedAdser])
+        }
+        setLastRefreshTime(new Date())
       } else {
         // ในโหมดปกติ ให้แสดง error message
         setError(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล Adser')
@@ -749,23 +794,23 @@ export default function OverviewPage() {
   
   // Fetch ข้อมูล Adser เมื่อเลือก Adser หรือ filter เปลี่ยน
   useEffect(() => {
-    if (activeTab === 'adser' && selectedAdser && teamFilter) {
-      fetchAdserData(false)
+    if (activeTab === 'adser' && teamFilter && !isCheckingAuth && !isLoadingTargets && currentTargets.cpmTarget > 0) {
+      // ถ้าไม่มี selectedAdser ให้เลือกค่าแรกใน adserList
+      if (!selectedAdser && adserList.length > 0) {
+        console.log('🔄 Auto-selecting first adser:', adserList[0])
+        setSelectedAdser(adserList[0])
+        updateURL(teamFilter, adserList[0])
+      } else if (selectedAdser) {
+        fetchAdserData(false)
+      }
     }
-  }, [activeTab, selectedAdser, teamFilter, monthFilter, yearFilter])
-  
-  // Set default Adser เมื่อมี list
-  useEffect(() => {
-    if (activeTab === 'adser' && adserList.length > 0 && !selectedAdser) {
-      setSelectedAdser(adserList[0])
-    }
-  }, [activeTab, adserList])
+  }, [activeTab, selectedAdser, teamFilter, monthFilter, yearFilter, isCheckingAuth, isLoadingTargets, currentTargets.cpmTarget, adserList.length])
 
   // ใช้ข้อมูลจาก cache เมื่อ selectedAdser เปลี่ยน (ถ้ามี)
   useEffect(() => {
     if (activeTab === 'adser' && selectedAdser && adserDataCache[selectedAdser]) {
       console.log('📦 Loading cached data for:', selectedAdser)
-      safeSetAdserData(adserDataCache[selectedAdser], false)
+      setAdserData(adserDataCache[selectedAdser])
       setError('') // ล้าง error เมื่อมีข้อมูลจาก cache
     }
   }, [selectedAdser, activeTab])
@@ -2339,6 +2384,8 @@ export default function OverviewPage() {
                       console.log('💾 Click: Saving scroll', bodyScrollRef.current.scrollTop, bodyScrollRef.current.scrollLeft)
                     }
                     setActiveTab('team')
+                    setSelectedAdser('')
+                    updateURL(teamFilter, '')
                   }}
                   className={`px-4 py-2 font-medium transition-colors relative whitespace-nowrap ${
                     activeTab === 'team'
@@ -2361,6 +2408,7 @@ export default function OverviewPage() {
                       }
                       setActiveTab('adser')
                       setSelectedAdser(adser)
+                      updateURL(teamFilter, adser)
                     }}
                     className={`px-4 py-2 font-medium transition-colors relative whitespace-nowrap ${
                       activeTab === 'adser' && selectedAdser === adser
@@ -2524,7 +2572,7 @@ export default function OverviewPage() {
               <div 
                 ref={bodyScrollRef} 
                 className="overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent dark:scrollbar-thumb-gray-700"
-                style={{ maxHeight: '500px' }}
+                style={{ maxHeight: '530px' }}
               >
                 <table className="w-full" style={{ tableLayout: 'fixed', width: '100%', borderSpacing: 0 }}>
                   <colgroup>
@@ -2542,7 +2590,7 @@ export default function OverviewPage() {
                           key={rowIndex}
                           className={`border-b border-gray-100 dark:border-gray-800 transition-all duration-150 ${
                             isTodayRow
-                              ? 'bg-orange-400 dark:bg-orange-700/70 hover:bg-orange-500 dark:hover:bg-orange-700/90' 
+                              ? 'bg-orange-300 dark:bg-orange-700/60 hover:bg-orange-400 dark:hover:bg-orange-700/80' 
                               : rowIndex % 2 === 0 
                                 ? 'bg-gray-50 dark:bg-gray-900/20 hover:bg-gray-100 dark:hover:bg-gray-900/40'
                                 : 'bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-900/50'
