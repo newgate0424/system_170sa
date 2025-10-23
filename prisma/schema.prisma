@@ -138,6 +138,20 @@ model ColorRule {
   @@index([priority])
 }
 
+// Model สำหรับเก็บเป้าหมายของแต่ละทีม
+model TeamTargets {
+  id                  String   @id @default(cuid())
+  team                String   @unique // ชื่อทีม
+  coverTarget         Float    @default(1.0) // เป้ายอด Cover ($)
+  cpmTarget           Float    @default(15) // เป้ายอด CPM
+  costPerTopupTarget  Float    @default(100) // เป้าต้นทุนเติม
+  exchangeRate        Float    @default(35) // อัตราแลกเปลี่ยน THB per 1 USD
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@index([team])
+}
+
 // Model สำหรับเก็บข้อมูล Gateway จาก Google Sheets
 model GatewayData {
   id                        String   @id @default(cuid())

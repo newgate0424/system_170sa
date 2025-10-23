@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { RefreshCw, Database, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { LoadingScreen } from '@/components/loading-screen'
 
 interface SyncResult {
   success: boolean
@@ -24,9 +26,33 @@ interface SyncSummary {
 }
 
 export default function SyncPage() {
+  const router = useRouter()
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<SyncSummary | null>(null)
   const [error, setError] = useState('')
+  
+  // ตรวจสอบ authentication
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        const data = await res.json()
+        
+        if (!data.user) {
+          router.push('/login')
+          return
+        }
+        
+        setIsCheckingAuth(false)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        router.push('/login')
+      }
+    }
+    
+    checkAuth()
+  }, [router])
 
   const handleSync = async () => {
     setIsSyncing(true)
@@ -54,8 +80,12 @@ export default function SyncPage() {
     }
   }
 
+  if (isCheckingAuth) {
+    return <LoadingScreen message="กำลังตรวจสอบสิทธิ์..." />
+  }
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Sync Gateway Data</h1>
@@ -181,25 +211,6 @@ export default function SyncPage() {
           </Card>
         </div>
       )}
-
-      {/* Instructions Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Database className="w-5 h-5 mr-2" />
-            วิธีใช้งาน
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <p>1. กดปุ่ม "Sync ข้อมูล" เพื่อดึงข้อมูลจาก Google Sheets</p>
-          <p>2. ระบบจะดึงข้อมูลจากทุก sheet (ทุกทีม) มาเก็บใน Database</p>
-          <p>3. ข้อมูลที่มีอยู่แล้วจะถูก update, ข้อมูลใหม่จะถูกเพิ่มเข้ามา</p>
-          <p>4. หลัง sync เสร็จ หน้า Overview จะดึงข้อมูลจาก Database (เร็วกว่ามาก)</p>
-          <p className="text-sm text-muted-foreground mt-4">
-            💡 แนะนำให้ sync ข้อมูลทุกวัน หรือเมื่อมีการอัพเดทข้อมูลใน Google Sheets
-          </p>
-        </CardContent>
-      </Card>
     </div>
   )
 }

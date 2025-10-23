@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RefreshCw, FileSpreadsheet, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useLanguage } from '@/contexts/language-context'
+import { LoadingScreen } from '@/components/loading-screen'
 interface SheetData {
   [key: string]: string
 }
@@ -121,11 +123,40 @@ const getCurrentMonth = () => {
 }
 export default function OverviewPage() {
   const { t, language } = useLanguage()
+  const router = useRouter()
   const [data, setData] = useState<SheetData[]>([])
   const [headers, setHeaders] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [error, setError] = useState('')
   const [, forceUpdate] = useState({})
+  const [userRole, setUserRole] = useState<'ADMIN' | 'EMPLOYEE'>('EMPLOYEE')
+  
+  // ตรวจสอบ authentication ก่อนแสดงหน้า
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        const data = await res.json()
+        
+        if (!data.user) {
+          // ไม่มี session ให้ redirect ไป login
+          router.push('/login')
+          return
+        }
+        
+        // เก็บ role ของ user
+        setUserRole(data.user.role || 'EMPLOYEE')
+        setIsCheckingAuth(false)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        router.push('/login')
+      }
+    }
+    
+    checkAuth()
+  }, [router])
+  
   useEffect(() => {
     const handleLanguageChange = () => {
       forceUpdate({})
@@ -142,9 +173,9 @@ export default function OverviewPage() {
   }
   const [teamFilter, setTeamFilter] = useState(() => {
     if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('overview_teamFilter') || ''
+      return sessionStorage.getItem('overview_teamFilter') || 'สาวอ้อย'
     }
-    return ''
+    return 'สาวอ้อย'
   })
   
   // Custom setter ที่บันทึก scroll ก่อนเปลี่ยนทีม
@@ -170,9 +201,9 @@ export default function OverviewPage() {
   })
   const [displayMode, setDisplayMode] = useState<'number' | 'percent'>(() => {
     if (typeof window !== 'undefined') {
-      return (sessionStorage.getItem('overview_displayMode') as 'number' | 'percent') || 'number'
+      return (sessionStorage.getItem('overview_displayMode') as 'number' | 'percent') || 'percent'
     }
-    return 'number'
+    return 'percent'
   })
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date())
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
@@ -193,34 +224,64 @@ export default function OverviewPage() {
     exchangeRate: number
   }
   
-  const [teamTargets, setTeamTargets] = useState<{ [team: string]: TeamTargets }>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('teamTargets')
-      return saved ? JSON.parse(saved) : {}
-    }
-    return {}
-  })
-  
-  // ดึงเป้าของทีมปัจจุบัน
-  const currentTargets: TeamTargets = teamTargets[teamFilter] || {
+  const [currentTargets, setCurrentTargets] = useState<TeamTargets>({
     coverTarget: 1.0,
     cpmTarget: 15,
     costPerTopupTarget: 100,
     exchangeRate: 35
+  })
+  
+  // โหลดเป้าหมายจากฐานข้อมูล
+  const loadTeamTargets = async (team: string) => {
+    if (!team) return
+    
+    try {
+      const res = await fetch(`/api/team-targets?team=${encodeURIComponent(team)}`)
+      const data = await res.json()
+      
+      if (data && !data.error) {
+        setCurrentTargets({
+          coverTarget: data.coverTarget || 1.0,
+          cpmTarget: data.cpmTarget || 15,
+          costPerTopupTarget: data.costPerTopupTarget || 100,
+          exchangeRate: data.exchangeRate || 35
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load team targets:', error)
+    }
   }
   
   // ฟังก์ชันบันทึกเป้า
-  const updateTeamTarget = (field: keyof TeamTargets, value: number) => {
+  const updateTeamTarget = async (field: keyof TeamTargets, value: number) => {
     const newTargets = {
-      ...teamTargets,
-      [teamFilter]: {
-        ...currentTargets,
-        [field]: value
-      }
+      ...currentTargets,
+      [field]: value
     }
-    setTeamTargets(newTargets)
-    localStorage.setItem('teamTargets', JSON.stringify(newTargets))
+    setCurrentTargets(newTargets)
+    
+    // บันทึกลงฐานข้อมูล
+    try {
+      await fetch('/api/team-targets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          team: teamFilter,
+          ...newTargets
+        })
+      })
+      console.log('✅ Team targets saved to database')
+    } catch (error) {
+      console.error('Failed to save team targets:', error)
+    }
   }
+  
+  // โหลดเป้าหมายเมื่อเปลี่ยนทีม
+  useEffect(() => {
+    if (teamFilter && !isCheckingAuth) {
+      loadTeamTargets(teamFilter)
+    }
+  }, [teamFilter, isCheckingAuth])
   
   useEffect(() => {
     const calculateScrollbarWidth = () => {
@@ -847,6 +908,17 @@ export default function OverviewPage() {
       })
     }
     
+    // โหมดเปอร์เซ็นต์สำหรับคอลัมน์พิเศษ (ตรวจสอบก่อน numberColumns)
+    if (percentageColumns.includes(header) && displayMode === 'percent') {
+      const numValue = parseFloat(String(value).replace(/,/g, ''))
+      const totalMessages = parseFloat(row['Total_Messages'] || '0')
+      if (isNaN(numValue) || isNaN(totalMessages) || totalMessages === 0) {
+        return value
+      }
+      const percentage = (numValue / totalMessages) * 100
+      return `${percentage.toFixed(2)}%`
+    }
+    
     // คอลัมน์ตัวเลขทั่วไป - แสดงแบบ ##,###
     if (numberColumns.includes(header)) {
       const numValue = parseFloat(String(value).replace(/,/g, ''))
@@ -859,17 +931,7 @@ export default function OverviewPage() {
       })
     }
     
-    // โหมดเปอร์เซ็นต์สำหรับคอลัมน์พิเศษ
-    if (!percentageColumns.includes(header) || displayMode === 'number') {
-      return value
-    }
-    const numValue = parseFloat(value)
-    const totalMessages = parseFloat(row['Total_Messages'] || '0')
-    if (isNaN(numValue) || isNaN(totalMessages) || totalMessages === 0) {
-      return value
-    }
-    const percentage = (numValue / totalMessages) * 100
-    return `${percentage.toFixed(2)}%`
+    return value
   }
   const getCellStyle = (row: SheetData, header: string): React.CSSProperties => {
     const style: React.CSSProperties = { fontSize: '13px' }
@@ -1164,6 +1226,10 @@ export default function OverviewPage() {
     })
     return summary
   }
+  if (isCheckingAuth) {
+    return <LoadingScreen message="กำลังตรวจสอบสิทธิ์..." />
+  }
+  
   if (isLoading) {
     return (
       <div className="p-6">
@@ -1269,48 +1335,63 @@ export default function OverviewPage() {
               {/* เป้าหมายของทีม */}
               {teamFilter && (
                 <div className="pt-3 border-t space-y-3">
-                  <Label className="text-sm font-medium">เป้าหมายของทีม: {teamFilter}</Label>
+                  <Label className="text-sm font-medium">
+                    เป้าหมายของทีม: {teamFilter}
+                    {userRole !== 'ADMIN' && <span className="text-xs text-muted-foreground ml-2">(ดูอย่างเดียว)</span>}
+                  </Label>
                   
                   <div className="grid grid-cols-2 gap-2 items-center">
                     <Label htmlFor="target-cover" className="text-xs text-muted-foreground">
                       เป้ายอด Cover ($)
                     </Label>
-                    <Input
-                      id="target-cover"
-                      type="number"
-                      step="0.01"
-                      value={currentTargets.coverTarget}
-                      onChange={(e) => updateTeamTarget('coverTarget', parseFloat(e.target.value) || 0)}
-                      className="h-8 text-xs"
-                    />
+                    {userRole === 'ADMIN' ? (
+                      <Input
+                        id="target-cover"
+                        type="number"
+                        step="0.01"
+                        value={currentTargets.coverTarget}
+                        onChange={(e) => updateTeamTarget('coverTarget', parseFloat(e.target.value) || 0)}
+                        className="h-8 text-xs"
+                      />
+                    ) : (
+                      <div className="text-sm font-semibold">{currentTargets.coverTarget.toFixed(2)}</div>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-2 gap-2 items-center">
                     <Label htmlFor="target-cpm" className="text-xs text-muted-foreground">
                       เป้ายอด CPM
                     </Label>
-                    <Input
-                      id="target-cpm"
-                      type="number"
-                      step="0.01"
-                      value={currentTargets.cpmTarget}
-                      onChange={(e) => updateTeamTarget('cpmTarget', parseFloat(e.target.value) || 0)}
-                      className="h-8 text-xs"
-                    />
+                    {userRole === 'ADMIN' ? (
+                      <Input
+                        id="target-cpm"
+                        type="number"
+                        step="0.01"
+                        value={currentTargets.cpmTarget}
+                        onChange={(e) => updateTeamTarget('cpmTarget', parseFloat(e.target.value) || 0)}
+                        className="h-8 text-xs"
+                      />
+                    ) : (
+                      <div className="text-sm font-semibold">{currentTargets.cpmTarget.toFixed(2)}</div>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-2 gap-2 items-center">
                     <Label htmlFor="target-topup" className="text-xs text-muted-foreground">
                       เป้าต้นทุนเติม
                     </Label>
-                    <Input
-                      id="target-topup"
-                      type="number"
-                      step="0.01"
-                      value={currentTargets.costPerTopupTarget}
-                      onChange={(e) => updateTeamTarget('costPerTopupTarget', parseFloat(e.target.value) || 0)}
-                      className="h-8 text-xs"
-                    />
+                    {userRole === 'ADMIN' ? (
+                      <Input
+                        id="target-topup"
+                        type="number"
+                        step="0.01"
+                        value={currentTargets.costPerTopupTarget}
+                        onChange={(e) => updateTeamTarget('costPerTopupTarget', parseFloat(e.target.value) || 0)}
+                        className="h-8 text-xs"
+                      />
+                    ) : (
+                      <div className="text-sm font-semibold">{currentTargets.costPerTopupTarget.toFixed(2)}</div>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-2 gap-2 items-center">
@@ -1324,16 +1405,18 @@ export default function OverviewPage() {
                 </div>
               )}
               {}
-              <div className="pt-3 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowColorSettings(!showColorSettings)}
-                  className="w-full"
-                >
-                  {showColorSettings ? 'ซ่อน' : 'แสดง'}การตั้งค่าสี
-                </Button>
-              </div>
+              {userRole === 'ADMIN' && (
+                <div className="pt-3 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowColorSettings(!showColorSettings)}
+                    className="w-full"
+                  >
+                    {showColorSettings ? 'ซ่อน' : 'แสดง'}การตั้งค่าสี
+                  </Button>
+                </div>
+              )}
               {}
               {showColorSettings && (
                 <div className="pt-3 border-t space-y-3 max-h-[500px] overflow-y-auto">

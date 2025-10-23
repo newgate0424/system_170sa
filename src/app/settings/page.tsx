@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -87,8 +88,10 @@ const fontSizes = [
 ]
 
 export default function SettingsPage() {
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const { t } = useLanguage()
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -110,9 +113,33 @@ export default function SettingsPage() {
     newPassword: '',
     confirmPassword: '',
   })
+  
+  // ตรวจสอบ authentication
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        const data = await res.json()
+        
+        if (!data.user) {
+          router.push('/login')
+          return
+        }
+        
+        setIsCheckingAuth(false)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        router.push('/login')
+      }
+    }
+    
+    checkAuth()
+  }, [router])
 
   useEffect(() => {
-    fetchSettings()
+    if (!isCheckingAuth) {
+      fetchSettings()
+    }
     
     // Listen for language changes from LanguageContext
     const handleLanguageChange = (event: CustomEvent) => {
@@ -402,6 +429,10 @@ export default function SettingsPage() {
     }
   }
 
+  if (isCheckingAuth) {
+    return <LoadingScreen message="กำลังตรวจสอบสิทธิ์..." />
+  }
+  
   if (isLoading) {
     return <LoadingScreen message={t('common.loading')} />
   }
