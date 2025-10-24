@@ -18,12 +18,12 @@ import {
   Chakra_Petch
 } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
-import { LanguageProvider } from "@/contexts/language-context";
+import { SimpleThemeProvider } from "@/lib/simple-theme-context";
+import { UserPreferencesProvider } from "@/lib/preferences";
+import { Providers } from "@/components/providers";
 
 // Force dynamic rendering for all pages (ใช้ cookies สำหรับ authentication)
 export const dynamic = 'force-dynamic'
-import { LoadingProvider } from "@/hooks/use-loading";
 import { ColorScript } from "@/components/color-script";
 import { LayoutWrapper } from "@/components/layout-wrapper";
 import { ThemeApplier } from "@/components/theme-applier";
@@ -78,21 +78,11 @@ export default function RootLayout({
         ${mali.variable}
         ${chakraPetch.variable}
       `}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <LanguageProvider>
-            <ThemeApplier />
-            <LoadingProvider>
-              <LayoutWrapper>
-                {children}
-              </LayoutWrapper>
-            </LoadingProvider>
-          </LanguageProvider>
-        </ThemeProvider>
+        <Providers>
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
+        </Providers>
       </body>
     </html>
   );

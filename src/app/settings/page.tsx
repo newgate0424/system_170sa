@@ -263,10 +263,13 @@ export default function SettingsPage() {
       const html = document.documentElement
       const body = document.body
       
+      let backgroundValue = ''
+      
       if (settings.backgroundColor === 'custom' && settings.customGradientStart && settings.customGradientEnd) {
         // Apply custom gradient
         const customGradient = `linear-gradient(135deg, ${settings.customGradientStart} 0%, ${settings.customGradientEnd} 100%)`
         console.log('🎨 Applying custom gradient:', customGradient)
+        backgroundValue = customGradient
         html.style.setProperty('background', customGradient, 'important')
         body.style.setProperty('background', customGradient, 'important')
         html.style.setProperty('background-attachment', 'fixed', 'important')
@@ -281,9 +284,11 @@ export default function SettingsPage() {
           // ถ้าเป็น dark mode ให้เพิ่ม overlay มืดทับ gradient
           if (isDarkMode) {
             const darkOverlay = `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), ${gradient}`
+            backgroundValue = darkOverlay
             html.style.setProperty('background', darkOverlay, 'important')
             body.style.setProperty('background', darkOverlay, 'important')
           } else {
+            backgroundValue = gradient
             html.style.setProperty('background', gradient, 'important')
             body.style.setProperty('background', gradient, 'important')
           }
@@ -295,6 +300,11 @@ export default function SettingsPage() {
         } else {
           console.log('❌ Gradient not found!')
         }
+      }
+      
+      // Save to localStorage for other pages to use
+      if (backgroundValue) {
+        localStorage.setItem('theme-background', backgroundValue)
       }
     }
     if (settings.fontFamily) {

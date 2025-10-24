@@ -449,6 +449,10 @@ export default function OverviewPage() {
   const teamFilterRef = useRef(teamFilter)
   const currentTargetsRef = useRef(currentTargets)
   
+  // Ref สำหรับ request ID เพื่อป้องกัน race condition
+  const currentTeamRequestId = useRef(0)
+  const currentAdserRequestId = useRef(0)
+  
   // อัปเดต refs เมื่อ state เปลี่ยน
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -589,6 +593,10 @@ export default function OverviewPage() {
       return
     }
     
+    // สร้าง request ID ใหม่สำหรับ request นี้
+    currentTeamRequestId.current += 1
+    const thisRequestId = currentTeamRequestId.current
+    
     if (!silent) {
       setIsLoading(true)
       isLoadingDataRef.current = true
@@ -604,6 +612,7 @@ export default function OverviewPage() {
         silent,
         timestamp: new Date().toISOString(),
         currentTargetsState: currentTargets.cpmTarget,
+        requestId: thisRequestId,
         refTargets: currentTargetsRef.current
       }
       console.log('🚀 fetchData called:', debugInfo)
@@ -630,10 +639,23 @@ export default function OverviewPage() {
       params.append('cpmTarget', cpmTarget.toString())
       const url = `/api/gateway-data?${params.toString()}`
       
-      console.log('📡 API URL:', url)
+      console.log('📡 API URL:', url, 'requestId:', thisRequestId)
       
       const res = await fetch(url)
       const result = await res.json()
+      
+      // ตรวจสอบว่า request นี้ยังเป็น request ล่าสุดหรือไม่
+      if (thisRequestId !== currentTeamRequestId.current) {
+        console.log('🚫 Team request outdated, ignoring. Request:', thisRequestId, 'Current:', currentTeamRequestId.current)
+        return
+      }
+      
+      // ตรวจสอบว่า teamFilter ยังเหมือนเดิมหรือไม่ (ป้องกันการเปลี่ยน team ระหว่างรอ response)
+      if (teamFilter !== teamFilterRef.current) {
+        console.log('🚫 Team changed during fetch, ignoring. Request team:', teamFilter, 'Current team:', teamFilterRef.current)
+        return
+      }
+      
       if (!res.ok) {
         throw new Error(result.error || 'Failed to fetch data')
       }
@@ -641,6 +663,7 @@ export default function OverviewPage() {
         dataLength: result.data?.length || 0,
         headersLength: result.headers?.length || 0,
         silent,
+        requestId: thisRequestId,
         firstRow: result.data?.[0]
       })
       
@@ -682,6 +705,10 @@ export default function OverviewPage() {
       return
     }
     
+    // สร้าง request ID ใหม่สำหรับ request นี้
+    currentAdserRequestId.current += 1
+    const thisRequestId = currentAdserRequestId.current
+    
     try {
       isLoadingAdserDataRef.current = true
       if (!silent) {
@@ -698,7 +725,8 @@ export default function OverviewPage() {
         teamFilter,
         selectedAdser,
         silent,
-        userRole
+        userRole,
+        requestId: thisRequestId
       })
       
       // ถ้า cpmTarget เป็น 0 แสดงว่ายังไม่ได้ตั้งค่า ให้ข้าม
@@ -723,8 +751,24 @@ export default function OverviewPage() {
       if (yearFilter) params.append('year', yearFilter)
       params.append('cpmTarget', cpmTarget.toString())
       const url = `/api/gateway-data?${params.toString()}`
+      
+      console.log('📡 Adser API URL:', url, 'requestId:', thisRequestId)
+      
       const res = await fetch(url)
       const result = await res.json()
+      
+      // ตรวจสอบว่า request นี้ยังเป็น request ล่าสุดหรือไม่
+      if (thisRequestId !== currentAdserRequestId.current) {
+        console.log('🚫 Adser request outdated, ignoring. Request:', thisRequestId, 'Current:', currentAdserRequestId.current)
+        return
+      }
+      
+      // ตรวจสอบว่า teamFilter และ selectedAdser ยังเหมือนเดิมหรือไม่
+      if (teamFilter !== teamFilterRef.current || selectedAdser !== selectedAdserRef.current) {
+        console.log('🚫 Team/Adser changed during fetch, ignoring. Request:', {teamFilter, selectedAdser}, 'Current:', {team: teamFilterRef.current, adser: selectedAdserRef.current})
+        return
+      }
+      
       if (!res.ok) {
         throw new Error(result.error || 'Failed to fetch adser data')
       }
@@ -732,6 +776,7 @@ export default function OverviewPage() {
         dataLength: result.data?.length || 0,
         headersLength: result.headers?.length || 0,
         silent,
+        requestId: thisRequestId,
         selectedAdser,
         userRole,
         firstRow: result.data?.[0]
@@ -850,7 +895,9 @@ export default function OverviewPage() {
   // ใช้ข้อมูลจาก cache เมื่อ selectedAdser เปลี่ยน (ถ้ามี)
   useEffect(() => {
     if (activeTab === 'adser' && selectedAdser && adserDataCache[selectedAdser]) {
-      console.log('📦 Loading cached data for:', selectedAdser)
+      // เพิ่ม request ID ใหม่เพื่อยกเลิก request ที่อาจกำลัง fetch อยู่
+      currentAdserRequestId.current += 1
+      console.log('📦 Loading cached data for:', selectedAdser, 'New request ID:', currentAdserRequestId.current)
       setAdserData(adserDataCache[selectedAdser])
       setError('') // ล้าง error เมื่อมีข้อมูลจาก cache
     }

@@ -14,6 +14,7 @@ import {
   Menu,
   FileSpreadsheet,
   RefreshCw,
+  CreditCard,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/contexts/sidebar-context'
@@ -42,9 +43,19 @@ const navItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
+    title: 'Adser',
+    href: '/adser',
+    icon: Activity,
+  },
+    {
     title: 'Overview',
     href: '/overview',
     icon: FileSpreadsheet,
+  },
+  {
+    title: 'Card Maker',
+    href: '/card-maker',
+    icon: CreditCard,
   },
   {
     title: 'Sync Data',

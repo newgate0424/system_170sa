@@ -154,6 +154,21 @@ model TeamTargets {
   @@index([team])
 }
 
+// Model สำหรับเก็บการตั้งค่าสีของแต่ละทีมและฟิลด์
+model TeamColorSetting {
+  id                     String   @id @default(cuid())
+  team_name              String   // ชื่อทีม
+  field_name             String   // ชื่อฟิลด์ (เช่น cpm, deposits, cover)
+  text_color_rules       String   @db.Text // JSON array ของกฎสีข้อความ
+  background_color_rules String   @db.Text // JSON array ของกฎสีพื้นหลัง
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+  
+  @@unique([team_name, field_name], name: "team_name_field_name")
+  @@index([team_name])
+  @@index([field_name])
+}
+
 // Model สำหรับเก็บข้อมูล Gateway จาก Google Sheets
 model GatewayData {
   id                        String   @id @default(cuid())
