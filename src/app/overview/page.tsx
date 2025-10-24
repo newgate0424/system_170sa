@@ -212,8 +212,10 @@ export default function OverviewPage() {
       console.log('💾 Team change: Saving scroll', bodyScrollRef.current.scrollTop, bodyScrollRef.current.scrollLeft)
     }
     setTeamFilter(newTeam)
+    // เปลี่ยนไปแท็บ team อัตโนมัติ
+    setActiveTab('team')
     // อัพเดท URL
-    updateURL(newTeam, activeTab === 'adser' ? selectedAdser : '')
+    updateURL(newTeam, '')
   }
   const [monthFilter, setMonthFilter] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -252,6 +254,7 @@ export default function OverviewPage() {
   // Ref เพื่อป้องกันการโหลดข้อมูลซ้ำซ้อน
   const isLoadingDataRef = useRef(false)
   const isLoadingAdserDataRef = useRef(false)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   // เป้าหมายของแต่ละทีม
   interface TeamTargets {
@@ -865,8 +868,16 @@ export default function OverviewPage() {
     // 4. ไม่ได้กำลังโหลด targets
     // 5. มี cpmTarget แล้ว (> 0)
     if (activeTab === 'team' && teamFilter && !isCheckingAuth && !isLoadingTargets && currentTargets.cpmTarget > 0) {
-      console.log('✅ Conditions met, fetching team data...')
-      fetchData(false)
+      // ถ้ามี cache ให้แสดงทันที (ไม่กระพริบ) แล้วค่อยโหลดใหม่เบื้องหลัง
+      if (teamDataCache.length > 0) {
+        console.log('📦 Using cached team data, refreshing in background')
+        setData(teamDataCache)
+        // โหลดข้อมูลใหม่เบื้องหลังแบบ silent (ไม่แสดง loading)
+        fetchData(true)
+      } else {
+        console.log('✅ Conditions met, fetching team data (first time)...')
+        fetchData(false)
+      }
     } else {
       console.log('⏸️ Skipping fetch. Reasons:', {
         wrongTab: activeTab !== 'team',
@@ -887,37 +898,36 @@ export default function OverviewPage() {
         setSelectedAdser(adserList[0])
         updateURL(teamFilter, adserList[0])
       } else if (selectedAdser) {
-        fetchAdserData(false)
+        // ถ้ามี cache ให้แสดงทันที (ไม่กระพริบ) แล้วค่อยโหลดใหม่เบื้องหลัง
+        if (adserDataCache[selectedAdser]) {
+          console.log('📦 Using cached adser data, refreshing in background')
+          setAdserData(adserDataCache[selectedAdser])
+          // โหลดข้อมูลใหม่เบื้องหลังแบบ silent (ไม่แสดง loading)
+          fetchAdserData(true)
+        } else {
+          console.log('🔄 Fetching adser data (first time)')
+          fetchAdserData(false)
+        }
       }
     }
   }, [activeTab, selectedAdser, teamFilter, monthFilter, yearFilter, isCheckingAuth, isLoadingTargets, currentTargets.cpmTarget, adserList.length])
 
-  // ใช้ข้อมูลจาก cache เมื่อ selectedAdser เปลี่ยน (ถ้ามี)
+  // โหลด scroll position เมื่อ selectedAdser เปลี่ยน
   useEffect(() => {
-    if (activeTab === 'adser' && selectedAdser && adserDataCache[selectedAdser]) {
-      // เพิ่ม request ID ใหม่เพื่อยกเลิก request ที่อาจกำลัง fetch อยู่
-      currentAdserRequestId.current += 1
-      console.log('📦 Loading cached data for:', selectedAdser, 'New request ID:', currentAdserRequestId.current)
-      setAdserData(adserDataCache[selectedAdser])
-      setError('') // ล้าง error เมื่อมีข้อมูลจาก cache
+    if (activeTab === 'adser' && selectedAdser) {
+      // โหลด scroll position จาก sessionStorage
+      const scrollKey = `overview_scroll_${activeTab}_${teamFilter}_${selectedAdser}`
+      const scrollLeftKey = `overview_scrollLeft_${activeTab}_${teamFilter}_${selectedAdser}`
+      const savedTop = parseInt(sessionStorage.getItem(scrollKey) || '0')
+      const savedLeft = parseInt(sessionStorage.getItem(scrollLeftKey) || '0')
+      setSavedScrollPosition(savedTop)
+      setSavedScrollLeft(savedLeft)
     }
   }, [selectedAdser, activeTab])
   
-  // คืนค่า scroll หลังจากข้อมูลเปลี่ยน
+  // Auto-refresh ทุก 1 นาที แบบ silent (ไม่แสดง loading)
   useEffect(() => {
-    if ((activeTab === 'team' && data.length > 0) || (activeTab === 'adser' && adserData.length > 0)) {
-      requestAnimationFrame(() => {
-        if (bodyScrollRef.current && headerScrollRef.current) {
-          bodyScrollRef.current.scrollTop = savedScrollPosition
-          bodyScrollRef.current.scrollLeft = savedScrollLeft
-          headerScrollRef.current.scrollLeft = savedScrollLeft
-        }
-      })
-    }
-  }, [data, adserData])
-  
-  // Auto-refresh ทุก 30 วินาที แบบ silent (ไม่แสดง loading)
-  useEffect(() => {
+    console.log('🔄 Setting up auto-refresh interval')
     const interval = setInterval(() => {
       // ใช้ ref เพื่อเข้าถึงค่าล่าสุด
       const currentTab = activeTabRef.current
@@ -973,36 +983,65 @@ export default function OverviewPage() {
           }
         }
       }
-    }, 30000) // 30 วินาที
+    }, 60000) // 60 วินาที = 1 นาที
     
-    return () => clearInterval(interval)
-  }, [userRole]) // เพิ่ม userRole เป็น dependency
+    return () => {
+      console.log('🛑 Clearing auto-refresh interval')
+      clearInterval(interval)
+    }
+  }, [userRole, teamFilter, adserData.length]) // เพิ่ม dependencies
   
   useEffect(() => {
     const bodyScroll = bodyScrollRef.current
     const headerScroll = headerScrollRef.current
     if (!bodyScroll || !headerScroll) return
     
-    // กู้คืน scroll position ถ้ามีค่าที่บันทึกไว้
-    if (savedScrollPosition > 0 || savedScrollLeft > 0) {
-      bodyScroll.scrollTop = savedScrollPosition
-      bodyScroll.scrollLeft = savedScrollLeft
-      headerScroll.scrollLeft = savedScrollLeft
-    }
+    // โหลด scroll position จาก sessionStorage ทันทีเมื่อเปลี่ยน team/adser
+    const scrollKey = `overview_scroll_${activeTab}_${teamFilter}_${selectedAdser || ''}`
+    const scrollLeftKey = `overview_scrollLeft_${activeTab}_${teamFilter}_${selectedAdser || ''}`
+    const savedTop = parseInt(sessionStorage.getItem(scrollKey) || '0')
+    const savedLeft = parseInt(sessionStorage.getItem(scrollLeftKey) || '0')
+    
+    // ตั้งค่า scroll ทันที ไม่รอ state update
+    bodyScroll.scrollTop = savedTop
+    bodyScroll.scrollLeft = savedLeft
+    headerScroll.scrollLeft = savedLeft
+    
+    // Update state สำหรับใช้ในที่อื่น
+    setSavedScrollPosition(savedTop)
+    setSavedScrollLeft(savedLeft)
     
     const handleBodyScroll = () => {
       headerScroll.scrollLeft = bodyScroll.scrollLeft
+      // บันทึกค่าหลังจาก scroll หยุด 200ms
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+        sessionStorage.setItem(scrollKey, bodyScroll.scrollTop.toString())
+        sessionStorage.setItem(scrollLeftKey, bodyScroll.scrollLeft.toString())
+      }, 200)
     }
+    
     const handleHeaderScroll = () => {
       bodyScroll.scrollLeft = headerScroll.scrollLeft
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+        sessionStorage.setItem(scrollLeftKey, headerScroll.scrollLeft.toString())
+      }, 200)
     }
     bodyScroll.addEventListener('scroll', handleBodyScroll, { passive: true })
     headerScroll.addEventListener('scroll', handleHeaderScroll, { passive: true })
     return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
       bodyScroll.removeEventListener('scroll', handleBodyScroll)
       headerScroll.removeEventListener('scroll', handleHeaderScroll)
     }
-  }, [data, adserData])
+  }, [activeTab, teamFilter, selectedAdser, data.length, adserData.length])
   
   const getThaiMonthFromDate = (dateStr: string): string => {
     if (!dateStr) return ''
@@ -1902,12 +1941,12 @@ export default function OverviewPage() {
   }
   return (
     <div className="pl-1 pr-4 py-2">
-      <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-6 gap-4" style={{ alignItems: 'start' }}>
         {}
         <div 
           className={`
-            ${isSidebarCollapsed ? 'lg:col-span-0 opacity-0 w-0' : 'lg:col-span-1 opacity-100'} 
-            transition-all duration-500 ease-in-out overflow-hidden self-start
+            ${isSidebarCollapsed ? 'hidden' : 'lg:col-span-1'} 
+            transition-all duration-500 ease-in-out
           `}
         >
           {!isSidebarCollapsed && (
@@ -2382,11 +2421,11 @@ export default function OverviewPage() {
         {}
         <div className={`
           ${isSidebarCollapsed ? 'lg:col-span-6' : 'lg:col-span-5'} 
-          transition-all duration-500 ease-in-out space-y-4 self-start
-        `}>
+          transition-all duration-500 ease-in-out
+        `} style={{ alignSelf: 'flex-start' }}>
           {}
       {error && (
-        <Card className="border-destructive">
+        <Card className="border-destructive" style={{ marginBottom: '1rem' }}>
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
@@ -2408,7 +2447,7 @@ export default function OverviewPage() {
         </Card>
       )}
       {}
-      <Card className="relative">
+      <Card className="relative" style={{ marginTop: 0 }}>
         {}
         <Button
           variant="ghost"
@@ -2423,7 +2462,7 @@ export default function OverviewPage() {
             <ChevronLeft className="h-4 w-4" />
           )}
         </Button>
-        <CardHeader className="pl-14">
+        <CardHeader className="pl-14 pb-0">
           {}
           {teamFilter && (
             <div className="flex items-center justify-between gap-4 mb-4 border-b pb-2">
@@ -2494,7 +2533,7 @@ export default function OverviewPage() {
             </div>
           )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0 pb-4">
           {displayData.length === 0 ? (
             <div className="text-center py-12">
               <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -2626,7 +2665,7 @@ export default function OverviewPage() {
               <div 
                 ref={bodyScrollRef} 
                 className="overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent dark:scrollbar-thumb-gray-700"
-                style={{ maxHeight: '530px' }}
+                style={{ maxHeight: '580px' }}
               >
                 <table className="w-full" style={{ tableLayout: 'fixed', width: '100%', borderSpacing: 0 }}>
                   <colgroup>
@@ -2687,7 +2726,7 @@ export default function OverviewPage() {
           {}
           {displayData.length > 0 && (
             <p className="text-xs text-muted-foreground mt-3 text-center">
-              อัพเดทล่าสุด: {lastRefreshTime.toLocaleTimeString('th-TH')} | รีเฟรชอัตโนมัติทุก 30 วินาที
+              อัพเดทล่าสุด: {lastRefreshTime.toLocaleTimeString('th-TH')}
             </p>
           )}
         </CardContent>
