@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 
+// API endpoint for daily deposits calculation
 export async function GET(request: NextRequest) {
   try {
     // ตรวจสอบ authentication จาก cookie
