@@ -839,14 +839,6 @@ export default function AdserPage() {
                                     </Table>
                                 </div>
                                 <Collapsible open={expandedGroups.has(groupName)} onOpenChange={() => toggleGroup(groupName)}>
-                                    {/* ปุ่มเปิด/ปิดกราฟ - ย้ายมาไว้ด้านบน ติดกับตาราง */}
-                                    <div className="flex justify-center border-t bg-muted/30 p-2">
-                                        <CollapsibleTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 px-4 py-2 text-xs text-muted-foreground w-full max-w-xs">
-                                            <TrendingUp className="h-4 w-4 mr-1" />
-                                            {expandedGroups.has(groupName) ? 'ซ่อนกราฟ' : 'แสดงกราฟ'}
-                                        </CollapsibleTrigger>
-                                    </div>
-                                    
                                     <CollapsibleContent className="px-4 pb-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 bg-muted/10 rounded-b-xl p-4">
                                             <GroupedChart title="ต้นทุนทัก (CPM)" data={chartData.cpm} yAxisLabel="$" loading={loadingGraph} teamsToShow={teamNames} chartType="cpm" yAxisDomainMax={groupYAxisMax[groupName]?.cpm} graphView={graphView} />
@@ -855,6 +847,14 @@ export default function AdserPage() {
                                             <GroupedChart title="1$ / Cover" data={chartData.cover} yAxisLabel="$" loading={loadingGraph} teamsToShow={teamNames} chartType="cover" groupName={groupName} yAxisDomainMax={groupYAxisMax[groupName]?.cover} graphView={graphView} />
                                         </div>
                                     </CollapsibleContent>
+                                    
+                                    {/* ปุ่มเปิด/ปิดกราฟ - อยู่ด้านล่างกราฟ */}
+                                    <div className="flex justify-center border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 p-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                                        <CollapsibleTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted h-8 px-4 py-2 text-xs text-muted-foreground w-full max-w-xs">
+                                            <TrendingUp className="h-4 w-4 mr-1" />
+                                            {expandedGroups.has(groupName) ? 'ซ่อนกราฟ' : 'แสดงกราฟ'}
+                                        </CollapsibleTrigger>
+                                    </div>
                                 </Collapsible>
                             </div>
                         </div>

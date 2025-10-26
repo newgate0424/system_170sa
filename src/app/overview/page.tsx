@@ -1306,16 +1306,6 @@ export default function OverviewPage() {
                 </div>
 
                 <Collapsible open={expandedGroups.has(groupName)} onOpenChange={() => toggleGroup(groupName)}>
-                  {/* ปุ่มเปิด/ปิดกราฟ - ย้ายมาไว้ด้านบน ติดกับตาราง */}
-                  <div className="flex justify-center border-t bg-muted/30 p-2">
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="text-xs text-muted-foreground w-full max-w-xs h-8 rounded-full">
-                        <TrendingUp className="h-4 w-4 mr-1" />
-                        {expandedGroups.has(groupName) ? 'ซ่อนกราฟ' : 'แสดงกราฟ'}
-                      </Button>
-                    </CollapsibleTrigger>
-                  </div>
-                  
                   <CollapsibleContent className="pt-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/10 rounded-b-xl">
                       <GroupedChart title="ต้นทุนทัก (CPM)" data={chartData.cpm} yAxisLabel="$" loading={loadingGraph} teamsToShow={teamNames} chartType="cpm" yAxisDomainMax={groupMaxValues?.cpm} graphView={graphView} />
@@ -1324,6 +1314,16 @@ export default function OverviewPage() {
                       <GroupedChart title="1$ / Cover" data={chartData.cover} yAxisLabel="$" loading={loadingGraph} teamsToShow={teamNames} chartType="cover" groupName={groupName} yAxisDomainMax={groupMaxValues?.cover} graphView={graphView} />
                     </div>
                   </CollapsibleContent>
+                  
+                  {/* ปุ่มเปิด/ปิดกราฟ - อยู่ด้านล่างกราฟ */}
+                  <div className="flex justify-center border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 p-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" className="text-xs text-muted-foreground w-full max-w-xs h-8 rounded-full hover:bg-muted">
+                        <TrendingUp className="h-4 w-4 mr-1" />
+                        {expandedGroups.has(groupName) ? 'ซ่อนกราฟ' : 'แสดงกราฟ'}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
                 </Collapsible>
               </div>
             </div>
