@@ -225,7 +225,7 @@ model GatewayData {
 }
 
 // Model สำหรับเก็บข้อมูล Campaign/Monitor (สำหรับหน้า Monitor)
-model CampaignData {
+model campaignData {
   id             String   @id @default(cuid())
   adser          String?  // ชื่อพนักงาน
   adid           String   @unique // Facebook Ad ID (ต้อง unique)
