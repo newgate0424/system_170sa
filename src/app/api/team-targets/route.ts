@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { requireAuth } from '@/lib/auth'
 
 const prisma = new PrismaClient()
 
 // GET - ดึงเป้าหมายของทีม
 export async function GET(request: NextRequest) {
   try {
+    // ตรวจสอบ authentication
+    await requireAuth();
+    
     const searchParams = request.nextUrl.searchParams
     const team = searchParams.get('team')
 
@@ -34,6 +38,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(teamTargets)
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
     console.error('Error fetching team targets:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to fetch team targets' },
@@ -45,6 +52,9 @@ export async function GET(request: NextRequest) {
 // POST - บันทึกเป้าหมายของทีม
 export async function POST(request: NextRequest) {
   try {
+    // ตรวจสอบ authentication
+    await requireAuth();
+    
     const body = await request.json()
     const { 
       team, 
@@ -84,6 +94,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(teamTargets)
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
     console.error('Error saving team targets:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to save team targets' },

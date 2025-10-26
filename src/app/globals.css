@@ -94,22 +94,36 @@
   }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - ทำให้ชัดเจนขึ้น */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-secondary;
+  @apply bg-slate-200 dark:bg-slate-700;
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-primary/50 rounded-md;
+  @apply bg-slate-400 dark:bg-slate-500;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-primary;
+  @apply bg-slate-500 dark:bg-slate-400;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: auto;
+  scrollbar-color: #94a3b8 #e2e8f0;
+}
+
+.dark * {
+  scrollbar-color: #64748b #334155;
 }
 
 /* Loading animation */
@@ -245,4 +259,118 @@ body * {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* DataTable fixed row height */
+@layer components {
+  .data-table tbody tr {
+    height: 32px;
+    max-height: 32px;
+    min-height: 32px;
+  }
+  
+  .data-table tbody td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-top: 0.125rem;
+    padding-bottom: 0.125rem;
+  }
+
+  /* Sticky header for data table */
+  .data-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: white;
+  }
+
+  .dark .data-table thead {
+    background-color: rgb(15 23 42); /* slate-900 */
+  }
+
+  .data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+}
+
+/* Default font size for data table */
+.data-table {
+  font-size: 13.5px !important;
+  line-height: 1.25rem !important;
+}
+
+.data-table thead th,
+.data-table tbody td,
+.data-table * {
+  font-size: 13.5px !important;
+}
+
+/* Font size settings for data table */
+:root[data-font-size="small"] .data-table,
+html[data-font-size="small"] .data-table {
+  font-size: 11.5px !important; /* 12px - 0.5px */
+  line-height: 1rem !important;
+}
+
+:root[data-font-size="medium"] .data-table,
+html[data-font-size="medium"] .data-table {
+  font-size: 13.5px !important; /* 14px - 0.5px */
+  line-height: 1.25rem !important;
+}
+
+:root[data-font-size="large"] .data-table,
+html[data-font-size="large"] .data-table {
+  font-size: 15.5px !important; /* 16px - 0.5px */
+  line-height: 1.5rem !important;
+}
+
+/* Apply font size to table headers */
+:root[data-font-size="small"] .data-table thead th,
+html[data-font-size="small"] .data-table thead th {
+  font-size: 11.5px !important;
+}
+
+:root[data-font-size="medium"] .data-table thead th,
+html[data-font-size="medium"] .data-table thead th {
+  font-size: 13.5px !important;
+}
+
+:root[data-font-size="large"] .data-table thead th,
+html[data-font-size="large"] .data-table thead th {
+  font-size: 15.5px !important;
+}
+
+/* Apply font size to table body cells */
+:root[data-font-size="small"] .data-table tbody td,
+html[data-font-size="small"] .data-table tbody td {
+  font-size: 11.5px !important;
+}
+
+:root[data-font-size="medium"] .data-table tbody td,
+html[data-font-size="medium"] .data-table tbody td {
+  font-size: 13.5px !important;
+}
+
+:root[data-font-size="large"] .data-table tbody td,
+html[data-font-size="large"] .data-table tbody td {
+  font-size: 15.5px !important;
+}
+
+/* Apply font size to all elements inside table */
+:root[data-font-size="small"] .data-table *,
+html[data-font-size="small"] .data-table * {
+  font-size: 11.5px !important;
+}
+
+:root[data-font-size="medium"] .data-table *,
+html[data-font-size="medium"] .data-table * {
+  font-size: 13.5px !important;
+}
+
+:root[data-font-size="large"] .data-table *,
+html[data-font-size="large"] .data-table * {
+  font-size: 15.5px !important;
 }

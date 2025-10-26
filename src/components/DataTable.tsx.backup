@@ -1,0 +1,268 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RefreshCw, Search, Filter } from 'lucide-react';
+import { useLanguage } from '@/contexts/language-context';
+
+interface DataRow {
+  id: string;
+  adser: string;
+  adId: string;
+  page: string;
+  team: string;
+  cpm: number;
+  totalMessage: number;
+  cost: number;
+  deposit: number;
+  status: string;
+}
+
+export default function DataTable() {
+  const { language } = useLanguage();
+  const [data, setData] = useState<DataRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState('');
+  const [selectedAdser, setSelectedAdser] = useState('all');
+  const [selectedTeam, setSelectedTeam] = useState('all');
+
+  // Mock data สำหรับตัวอย่าง
+  useEffect(() => {
+    const mockData: DataRow[] = [
+      {
+        id: '1',
+        adser: 'Boogey',
+        adId: '123456789',
+        page: 'Page A',
+        team: 'สาวอ้อย',
+        cpm: 2.5,
+        totalMessage: 1500,
+        cost: 3750,
+        deposit: 45,
+        status: 'Active'
+      },
+      {
+        id: '2',
+        adser: 'Bubble',
+        adId: '987654321',
+        page: 'Page B',
+        team: 'สาวอ้อย',
+        cpm: 1.8,
+        totalMessage: 2000,
+        cost: 3600,
+        deposit: 52,
+        status: 'Active'
+      },
+      {
+        id: '3',
+        adser: 'Lucifer',
+        adId: '456789123',
+        page: 'Page C',
+        team: 'อลิน',
+        cpm: 3.2,
+        totalMessage: 1200,
+        cost: 3840,
+        deposit: 38,
+        status: 'Paused'
+      },
+    ];
+
+    // จำลองการโหลดข้อมูล
+    setTimeout(() => {
+      setData(mockData);
+      setLoading(false);
+    }, 1000);
+  }, []);
+
+  // Filter data
+  const filteredData = data.filter(row => {
+    const matchSearch = searchText === '' || 
+      row.adser.toLowerCase().includes(searchText.toLowerCase()) ||
+      row.adId.includes(searchText) ||
+      row.page.toLowerCase().includes(searchText.toLowerCase());
+    
+    const matchAdser = selectedAdser === 'all' || row.adser === selectedAdser;
+    const matchTeam = selectedTeam === 'all' || row.team === selectedTeam;
+
+    return matchSearch && matchAdser && matchTeam;
+  });
+
+  // Get unique values for filters
+  const adsers = ['all', ...Array.from(new Set(data.map(row => row.adser)))];
+  const teams = ['all', ...Array.from(new Set(data.map(row => row.team)))];
+
+  const handleRefresh = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="flex flex-col items-center gap-4">
+            <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-muted-foreground">
+              {language === 'th' ? 'กำลังโหลดข้อมูล...' : 'Loading data...'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col p-6 space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">
+            {language === 'th' ? 'ข้อมูลการตลาด' : 'Marketing Data'}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {language === 'th' 
+              ? `แสดง ${filteredData.length} จาก ${data.length} รายการ` 
+              : `Showing ${filteredData.length} of ${data.length} items`}
+          </p>
+        </div>
+        <Button onClick={handleRefresh} variant="outline" size="sm">
+          <RefreshCw className="w-4 h-4 mr-2" />
+          {language === 'th' ? 'รีเฟรช' : 'Refresh'}
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            {language === 'th' ? 'ตัวกรอง' : 'Filters'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder={language === 'th' ? 'ค้นหา...' : 'Search...'}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Adser Filter */}
+            <Select value={selectedAdser} onValueChange={setSelectedAdser}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === 'th' ? 'เลือก Adser' : 'Select Adser'} />
+              </SelectTrigger>
+              <SelectContent>
+                {adsers.map((adser) => (
+                  <SelectItem key={adser} value={adser}>
+                    {adser === 'all' 
+                      ? (language === 'th' ? 'ทั้งหมด' : 'All')
+                      : adser}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Team Filter */}
+            <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === 'th' ? 'เลือกทีม' : 'Select Team'} />
+              </SelectTrigger>
+              <SelectContent>
+                {teams.map((team) => (
+                  <SelectItem key={team} value={team}>
+                    {team === 'all' 
+                      ? (language === 'th' ? 'ทั้งหมด' : 'All')
+                      : team}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Data Table */}
+      <Card className="flex-1 overflow-hidden flex flex-col">
+        <CardContent className="p-0 flex-1 overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-center">
+                  {language === 'th' ? 'ลำดับ' : 'No.'}
+                </TableHead>
+                <TableHead className="text-center">Adser</TableHead>
+                <TableHead className="text-center">
+                  {language === 'th' ? 'ID โฆษณา' : 'Ad ID'}
+                </TableHead>
+                <TableHead className="text-center">
+                  {language === 'th' ? 'เพจ' : 'Page'}
+                </TableHead>
+                <TableHead className="text-center">
+                  {language === 'th' ? 'ทีม' : 'Team'}
+                </TableHead>
+                <TableHead className="text-center">CPM</TableHead>
+                <TableHead className="text-center">
+                  {language === 'th' ? 'ยอดทัก' : 'Messages'}
+                </TableHead>
+                <TableHead className="text-right">
+                  {language === 'th' ? 'ค่าใช้จ่าย' : 'Cost'}
+                </TableHead>
+                <TableHead className="text-center">
+                  {language === 'th' ? 'ยอดเติม' : 'Deposits'}
+                </TableHead>
+                <TableHead className="text-center">
+                  {language === 'th' ? 'สถานะ' : 'Status'}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    {language === 'th' ? 'ไม่พบข้อมูล' : 'No data found'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredData.map((row, index) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="text-center">{index + 1}</TableCell>
+                    <TableCell className="text-center font-medium">{row.adser}</TableCell>
+                    <TableCell className="text-center font-mono text-sm">{row.adId}</TableCell>
+                    <TableCell className="text-center">{row.page}</TableCell>
+                    <TableCell className="text-center">{row.team}</TableCell>
+                    <TableCell className="text-center">${row.cpm.toFixed(2)}</TableCell>
+                    <TableCell className="text-center">{row.totalMessage.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">${row.cost.toLocaleString()}</TableCell>
+                    <TableCell className="text-center">{row.deposit}</TableCell>
+                    <TableCell className="text-center">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        row.status === 'Active' 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                      }`}>
+                        {row.status}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -16,11 +16,49 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 const translations: Record<Language, Record<string, string>> = {
   th: {
     // Navigation
+    'nav.overview': 'ภาพรวมทีม',
+    'nav.adser': 'ภาพรวม Adser',
     'nav.dashboard': 'แดชบอร์ด',
+    'nav.monitor': 'มอนิเตอร์',
+    'nav.kpiAdser': 'KPI Adser',
+    'nav.content': 'คอนเทนต์',
+    'nav.sync': 'ซิงค์ข้อมูล',
+    'nav.cardMaker': 'สร้างบัตร',
     'nav.users': 'จัดการผู้ใช้',
     'nav.sessions': 'ผู้ใช้ออนไลน์',
     'nav.activity': 'บันทึกกิจกรรม',
     'nav.settings': 'ตั้งค่า',
+    
+    // Pages - Overview Team
+    'overview.title': 'ภาพรวมทีม',
+    'overview.realtime': 'ข้อมูลเรียลไทม์',
+    'overview.updated': 'อัพเดท',
+    'overview.selectTeam': 'เลือกทีม',
+    'overview.allTeams': 'ทุกทีม',
+    'overview.dateRange': 'ช่วงวันที่',
+    'overview.tableView': 'มุมมองตาราง',
+    'overview.graphView': 'มุมมองกราฟ',
+    'overview.summary': 'สรุปภาพรวม',
+    
+    // Pages - Adser Overview
+    'adser.title': 'ภาพรวม Adser',
+    'adser.realtime': 'ข้อมูลเรียลไทม์',
+    'adser.updated': 'อัพเดท',
+    'adser.selectAdser': 'เลือก Adser',
+    'adser.allAdsers': 'ทั้งหมด',
+    'adser.dateRange': 'ช่วงวันที่',
+    'adser.tableView': 'มุมมองตาราง',
+    'adser.graphView': 'มุมมองกราฟ',
+    'adser.performance': 'ประสิทธิภาพ',
+    
+    // Pages - Dashboard
+    'dashboard.title': 'แดชบอร์ด',
+    'dashboard.overview': 'ภาพรวม',
+    'dashboard.selectTeam': 'เลือกทีม',
+    'dashboard.selectMember': 'เลือกสมาชิก',
+    'dashboard.dateRange': 'ช่วงวันที่',
+    'dashboard.refresh': 'รีเฟรช',
+    'dashboard.export': 'ส่งออก',
     
     // Header
     'header.toggle.open': 'เปิด Sidebar',
@@ -91,11 +129,49 @@ const translations: Record<Language, Record<string, string>> = {
   },
   en: {
     // Navigation
+    'nav.overview': 'Team Overview',
+    'nav.adser': 'Adser Overview',
     'nav.dashboard': 'Dashboard',
+    'nav.monitor': 'Monitor',
+    'nav.kpiAdser': 'KPI Adser',
+    'nav.content': 'Content',
+    'nav.sync': 'Sync Data',
+    'nav.cardMaker': 'Card Maker',
     'nav.users': 'User Management',
     'nav.sessions': 'Online Users',
     'nav.activity': 'Activity Logs',
     'nav.settings': 'Settings',
+    
+    // Pages - Overview Team
+    'overview.title': 'Team Overview',
+    'overview.realtime': 'Real-time Data',
+    'overview.updated': 'Updated',
+    'overview.selectTeam': 'Select Team',
+    'overview.allTeams': 'All Teams',
+    'overview.dateRange': 'Date Range',
+    'overview.tableView': 'Table View',
+    'overview.graphView': 'Graph View',
+    'overview.summary': 'Summary',
+    
+    // Pages - Adser Overview
+    'adser.title': 'Adser Overview',
+    'adser.realtime': 'Real-time Data',
+    'adser.updated': 'Updated',
+    'adser.selectAdser': 'Select Adser',
+    'adser.allAdsers': 'All Adsers',
+    'adser.dateRange': 'Date Range',
+    'adser.tableView': 'Table View',
+    'adser.graphView': 'Graph View',
+    'adser.performance': 'Performance',
+    
+    // Pages - Dashboard
+    'dashboard.title': 'Dashboard',
+    'dashboard.overview': 'Overview',
+    'dashboard.selectTeam': 'Select Team',
+    'dashboard.selectMember': 'Select Member',
+    'dashboard.dateRange': 'Date Range',
+    'dashboard.refresh': 'Refresh',
+    'dashboard.export': 'Export',
     
     // Header
     'header.toggle.open': 'Open Sidebar',

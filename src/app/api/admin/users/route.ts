@@ -44,7 +44,13 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ users })
+    // Convert Json field to array
+    const formattedUsers = users.map(user => ({
+      ...user,
+      teams: Array.isArray(user.teams) ? user.teams : []
+    }))
+
+    return NextResponse.json({ users: formattedUsers })
   } catch (error: any) {
     if (error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
@@ -89,7 +95,7 @@ export async function POST(request: NextRequest) {
         username: data.username,
         password: hashedPassword,
         role: data.role,
-        teams: data.teams,
+        teams: data.teams, // Prisma จะ handle Json type เอง
       },
       select: {
         id: true,
@@ -100,7 +106,12 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Log activity
+    return NextResponse.json({ 
+      user: {
+        ...user,
+        teams: Array.isArray(user.teams) ? user.teams : []
+      }
+    }, { status: 201 })
     const ipAddress = getClientIP(request.headers)
     const userAgent = request.headers.get('user-agent') || undefined
     
@@ -222,7 +233,12 @@ export async function PUT(request: NextRequest) {
       userAgent
     )
 
-    return NextResponse.json({ user })
+    return NextResponse.json({ 
+      user: {
+        ...user,
+        teams: Array.isArray(user.teams) ? user.teams : []
+      }
+    })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

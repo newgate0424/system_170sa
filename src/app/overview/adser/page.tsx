@@ -596,15 +596,44 @@ export default function AdserPage() {
             if (savedGraphMonth) setGraphMonth(parseInt(savedGraphMonth, 10));
         } catch (error) { console.error("Failed to parse graph settings from localStorage", error); }
         try { const savedShowBreakdown = localStorage.getItem('adserShowBreakdown'); if (savedShowBreakdown) setShowBreakdown(JSON.parse(savedShowBreakdown)); } catch (error) { console.error("Failed to parse show breakdown from localStorage", error); }
-        try { const savedExpandedGroups = localStorage.getItem('adserExpandedGroups'); if (savedExpandedGroups) { const parsed = JSON.parse(savedExpandedGroups); setExpandedGroups(new Set(parsed)); } } catch (error) { console.error("Failed to parse expanded groups from localStorage", error); }
     }, []);
+
+    // Load expanded groups from localStorage (แยกออกมาเพื่อให้โหลดหลัง isClient เป็น true)
+    useEffect(() => {
+        if (!isClient) return;
+        
+        console.log('🔍 [Adser] Attempting to load expanded groups from localStorage...');
+        try { 
+            const savedExpandedGroups = localStorage.getItem('adserExpandedGroups'); 
+            console.log('📦 [Adser] Raw localStorage value:', savedExpandedGroups);
+            
+            if (savedExpandedGroups) { 
+                const parsed = JSON.parse(savedExpandedGroups); 
+                console.log('📝 [Adser] Parsed value:', parsed);
+                
+                const newSet = new Set<string>(parsed);
+                setExpandedGroups(newSet);
+                console.log('✅ [Adser] Loaded expanded groups from localStorage:', Array.from(newSet));
+            } else {
+                console.log('📝 [Adser] No saved adser expanded groups, using default (collapsed = empty Set)');
+            }
+        } catch (error) { 
+            console.error("❌ [Adser] Failed to parse expanded groups from localStorage", error); 
+        }
+    }, [isClient]); // โหลดเมื่อ isClient เป็น true
 
     useEffect(() => { if (isClient && tableDateRange) localStorage.setItem('adserTableDateRange', JSON.stringify(tableDateRange)); }, [tableDateRange, isClient]);
     useEffect(() => { if (isClient) localStorage.setItem('adserGraphView', graphView); }, [graphView, isClient]);
     useEffect(() => { if (isClient) localStorage.setItem('adserGraphYear', graphYear.toString()); }, [graphYear, isClient]);
     useEffect(() => { if (isClient) localStorage.setItem('adserGraphMonth', graphMonth.toString()); }, [graphMonth, isClient]);
     useEffect(() => { if (isClient) localStorage.setItem('adserShowBreakdown', JSON.stringify(showBreakdown)); }, [showBreakdown, isClient]);
-    useEffect(() => { if (isClient) localStorage.setItem('adserExpandedGroups', JSON.stringify(Array.from(expandedGroups))); }, [expandedGroups, isClient]);
+    useEffect(() => { 
+        if (isClient) {
+            const groupsArray = Array.from(expandedGroups);
+            localStorage.setItem('adserExpandedGroups', JSON.stringify(groupsArray));
+            console.log('💾 [Adser] Saved adser expanded groups to localStorage:', groupsArray);
+        }
+    }, [expandedGroups, isClient]);
     
     const toggleGroup = (groupName: string) => setExpandedGroups(prev => { const newSet = new Set(prev); newSet.has(groupName) ? newSet.delete(groupName) : newSet.add(groupName); return newSet; });
     const { data: exchangeRateData, isLoading: isRateLoading } = useSWR('/api/exchange-rate', fetcher, { refreshInterval: 300000, onSuccess: () => { setLastUpdate(new Date()); setConnectionError(null); }, onError: () => setConnectionError('Failed to fetch rate'), revalidateOnFocus: false });
@@ -613,8 +642,51 @@ export default function AdserPage() {
     const graphDateRange = useMemo(() => { const date = dayjs().year(graphYear).month(graphMonth); return graphView === 'daily' ? { from: date.startOf('month').toDate(), to: date.endOf('month').toDate() } : { from: dayjs().year(graphYear).startOf('year').toDate(), to: dayjs().year(graphYear).endOf('year').toDate() }; }, [graphView, graphYear, graphMonth]);
     const apiUrl = (range: DateRange | undefined) => range?.from && range?.to && exchangeRate ? `/api/adser?startDate=${dayjs(range.from).format('YYYY-MM-DD')}&endDate=${dayjs(range.to).format('YYYY-MM-DD')}&exchangeRate=${exchangeRate}` : null;
     
-    const { data: tableData, error: tableError, isLoading: loadingTable } = useSWR<TeamMetric[]>(apiUrl(tableDateRange), fetcher, { refreshInterval: 30000, onSuccess: () => { setLastUpdate(new Date()); setConnectionError(null); }, onError: () => setConnectionError('Failed to fetch table data'), revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: true, refreshWhenHidden: true, refreshWhenOffline: false, dedupingInterval: 10000 });
-    const { data: graphRawData, error: graphError, isLoading: loadingGraph } = useSWR<TeamMetric[]>(apiUrl(graphDateRange), fetcher, { refreshInterval: 30000, onSuccess: () => { setLastUpdate(new Date()); setConnectionError(null); }, onError: () => setConnectionError('Failed to fetch graph data'), revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: true, refreshWhenHidden: true, refreshWhenOffline: false, dedupingInterval: 15000 });
+    const { data: tableData, error: tableError, isLoading: loadingTable } = useSWR<TeamMetric[]>(
+        apiUrl(tableDateRange), 
+        fetcher, 
+        { 
+            refreshInterval: 30000, 
+            onSuccess: () => { setLastUpdate(new Date()); setConnectionError(null); }, 
+            onError: (error) => { 
+                console.error('❌ [Adser] Table data fetch error:', error);
+                setConnectionError('Failed to fetch table data');
+            }, 
+            revalidateOnFocus: false, 
+            revalidateOnReconnect: false, 
+            revalidateIfStale: true, 
+            refreshWhenHidden: true, 
+            refreshWhenOffline: false, 
+            dedupingInterval: 10000,
+            keepPreviousData: true, // ✅ เก็บข้อมูลเก่าไว้
+            shouldRetryOnError: true, // ✅ retry เมื่อ error
+            errorRetryCount: 3, // ✅ retry สูงสุด 3 ครั้ง
+            errorRetryInterval: 5000, // ✅ รอ 5 วินาทีก่อน retry
+        }
+    );
+    
+    const { data: graphRawData, error: graphError, isLoading: loadingGraph } = useSWR<TeamMetric[]>(
+        apiUrl(graphDateRange), 
+        fetcher, 
+        { 
+            refreshInterval: 30000, 
+            onSuccess: () => { setLastUpdate(new Date()); setConnectionError(null); }, 
+            onError: (error) => { 
+                console.error('❌ [Adser] Graph data fetch error:', error);
+                setConnectionError('Failed to fetch graph data');
+            }, 
+            revalidateOnFocus: false, 
+            revalidateOnReconnect: false, 
+            revalidateIfStale: true, 
+            refreshWhenHidden: true, 
+            refreshWhenOffline: false, 
+            dedupingInterval: 15000,
+            keepPreviousData: true, // ✅ เก็บข้อมูลเก่าไว้
+            shouldRetryOnError: true, // ✅ retry เมื่อ error
+            errorRetryCount: 3, // ✅ retry สูงสุด 3 ครั้ง
+            errorRetryInterval: 5000, // ✅ รอ 5 วินาทีก่อน retry
+        }
+    );
     
     useEffect(() => {
         if (!graphRawData || graphRawData.length === 0) { setChartData({ cpm: [], costPerDeposit: [], deposits: [], cover: [] }); return; }
@@ -767,20 +839,22 @@ export default function AdserPage() {
                                     </Table>
                                 </div>
                                 <Collapsible open={expandedGroups.has(groupName)} onOpenChange={() => toggleGroup(groupName)}>
+                                    {/* ปุ่มเปิด/ปิดกราฟ - ย้ายมาไว้ด้านบน ติดกับตาราง */}
+                                    <div className="flex justify-center border-t bg-muted/30 p-2">
+                                        <CollapsibleTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 px-4 py-2 text-xs text-muted-foreground w-full max-w-xs">
+                                            <TrendingUp className="h-4 w-4 mr-1" />
+                                            {expandedGroups.has(groupName) ? 'ซ่อนกราฟ' : 'แสดงกราฟ'}
+                                        </CollapsibleTrigger>
+                                    </div>
+                                    
                                     <CollapsibleContent className="px-4 pb-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 bg-muted/10 rounded-b-xl p-4">
                                             <GroupedChart title="ต้นทุนทัก (CPM)" data={chartData.cpm} yAxisLabel="$" loading={loadingGraph} teamsToShow={teamNames} chartType="cpm" yAxisDomainMax={groupYAxisMax[groupName]?.cpm} graphView={graphView} />
                                             <GroupedChart title="ต้นทุนต่อเติม" data={chartData.costPerDeposit} yAxisLabel="$" loading={loadingGraph} teamsToShow={teamNames} chartType="costPerDeposit" yAxisDomainMax={groupYAxisMax[groupName]?.costPerDeposit} graphView={graphView} />
                                             <GroupedChart title="เป้ายอดเติม" data={chartData.deposits} yAxisLabel="" loading={loadingGraph} teamsToShow={teamNames} chartType="deposits" dateForTarget={graphDateRange?.from} graphView={graphView} />
                                             <GroupedChart title="1$ / Cover" data={chartData.cover} yAxisLabel="$" loading={loadingGraph} teamsToShow={teamNames} chartType="cover" groupName={groupName} yAxisDomainMax={groupYAxisMax[groupName]?.cover} graphView={graphView} />
                                         </div>
                                     </CollapsibleContent>
-                                    <div className="flex justify-center border-t bg-muted/30 p-3">
-                                        <CollapsibleTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 text-xs text-muted-foreground w-full max-w-xs">
-                                            <TrendingUp className="h-4 w-4 mr-1" />
-                                            {expandedGroups.has(groupName) ? 'ซ่อนกราฟ' : 'แสดงกราฟ'}
-                                        </CollapsibleTrigger>
-                                    </div>
                                 </Collapsible>
                             </div>
                         </div>

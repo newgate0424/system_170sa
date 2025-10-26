@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth';
 
 interface DailyDataPoint {
   date: string;
@@ -60,6 +61,9 @@ function formatDateYMD(date: Date): string {
 
 export async function GET(req: NextRequest) {
   try {
+    // ตรวจสอบ authentication
+    await requireAuth();
+    
     const { searchParams } = new URL(req.url);
     const startDate = searchParams.get('startDate'); // YYYY-MM-DD
     const endDate = searchParams.get('endDate'); // YYYY-MM-DD
@@ -249,7 +253,10 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(teamMetrics);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 });
+    }
     console.error('Error fetching adser data:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching the data.' },

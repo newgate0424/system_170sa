@@ -19,7 +19,6 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { SimpleThemeProvider } from "@/lib/simple-theme-context";
-import { UserPreferencesProvider } from "@/lib/preferences";
 import { Providers } from "@/components/providers";
 
 // Force dynamic rendering for all pages (ใช้ cookies สำหรับ authentication)

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getGoogleSheetsData, formatSheetData } from '@/lib/googleSheets'
+import { requireAuth } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    // ตรวจสอบ authentication
+    await requireAuth();
+    
     // ดึง query parameter สำหรับเลือก sheet และ force refresh
     const searchParams = request.nextUrl.searchParams
     const sheetName = searchParams.get('sheet') || 'gateway_team' // default เป็น gateway_team
@@ -22,6 +26,9 @@ export async function GET(request: NextRequest) {
       sheetName,
     })
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
     console.error('API Error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to fetch data' },

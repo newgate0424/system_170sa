@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/auth'
 
 // PATCH - อัพเดทกฎบางส่วน (partial update)
 export async function PATCH(
@@ -7,6 +8,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    // ตรวจสอบ authentication
+    await requireAuth();
+    
     const body = await request.json()
     const updates: any = {}
 
@@ -30,6 +34,9 @@ export async function PATCH(
 
     return NextResponse.json(rule)
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
     console.error('Error patching color rule:', error)
     return NextResponse.json(
       { error: 'Failed to patch color rule', message: error.message },
@@ -44,6 +51,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // ตรวจสอบ authentication
+    await requireAuth();
+    
     const body = await request.json()
     const {
       team,
@@ -78,6 +88,9 @@ export async function PUT(
 
     return NextResponse.json(rule)
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
     console.error('Error updating color rule:', error)
     return NextResponse.json(
       { error: 'Failed to update color rule', message: error.message },
@@ -92,6 +105,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // ตรวจสอบ authentication
+    await requireAuth();
+    
     // Soft delete - แค่ปิดการใช้งาน
     const rule = await prisma.colorRule.update({
       where: { id: params.id },
@@ -100,6 +116,9 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Rule deleted successfully', rule })
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
     console.error('Error deleting color rule:', error)
     return NextResponse.json(
       { error: 'Failed to delete color rule', message: error.message },

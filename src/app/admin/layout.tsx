@@ -15,7 +15,7 @@ export default async function AdminLayout({
 
   // Check if user is admin
   if (session.role !== 'ADMIN') {
-    redirect('/dashboard')
+    redirect('/overview')
   }
 
   return <>{children}</>

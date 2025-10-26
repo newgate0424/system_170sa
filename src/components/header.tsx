@@ -26,7 +26,14 @@ interface HeaderProps {
 }
 
 const pageNames: Record<string, string> = {
+  '/overview': 'nav.overview',
+  '/overview/adser': 'nav.adser',
   '/dashboard': 'nav.dashboard',
+  '/monitor': 'nav.monitor',
+  '/kpi-adser': 'nav.kpiAdser',
+  '/content': 'nav.content',
+  '/sync': 'nav.sync',
+  '/card-maker': 'nav.cardMaker',
   '/admin/users': 'nav.users',
   '/admin/sessions': 'nav.sessions',
   '/admin/activity-logs': 'nav.activity',

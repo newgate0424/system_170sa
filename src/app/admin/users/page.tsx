@@ -42,14 +42,14 @@ interface User {
 }
 
 const availableTeams = [
-  'ฝ่ายขาย',
-  'ฝ่ายการตลาด',
-  'ฝ่ายบัญชี',
-  'ฝ่ายบุคคล',
-  'ฝ่ายไอที',
-  'ฝ่ายผลิต',
-  'ฝ่ายคลังสินค้า',
-  'ฝ่ายบริการลูกค้า',
+  'HCA',
+  'HCB',
+  'HCC',
+  'HCD',
+  'HSA1',
+  'HSA2',
+  'HSB',
+  'HZA',
 ]
 
 export default function UsersPage() {
@@ -87,20 +87,49 @@ export default function UsersPage() {
       const url = editingUser ? '/api/admin/users' : '/api/admin/users'
       const method = editingUser ? 'PUT' : 'POST'
       
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingUser ? { ...formData, id: editingUser.id } : formData),
-      })
+      // Prepare payload - don't include password if it's empty during edit
+      const payload = editingUser 
+        ? { 
+            ...formData, 
+            id: editingUser.id,
+            ...(formData.password ? {} : { password: undefined }) // Remove password key if empty
+          }
+        : formData;
 
-      if (res.ok) {
-        setIsDialogOpen(false)
-        setEditingUser(null)
-        setFormData({ username: '', password: '', role: 'EMPLOYEE', teams: [] })
-        fetchUsers()
+      // If editing and password is empty, remove it from payload
+      if (editingUser && !formData.password) {
+        const { password, ...rest } = payload;
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rest),
+        });
+
+        if (res.ok) {
+          setIsDialogOpen(false)
+          setEditingUser(null)
+          setFormData({ username: '', password: '', role: 'EMPLOYEE', teams: [] })
+          fetchUsers()
+        } else {
+          const data = await res.json()
+          alert(data.error || 'เกิดข้อผิดพลาด')
+        }
       } else {
-        const data = await res.json()
-        alert(data.error || 'เกิดข้อผิดพลาด')
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          setIsDialogOpen(false)
+          setEditingUser(null)
+          setFormData({ username: '', password: '', role: 'EMPLOYEE', teams: [] })
+          fetchUsers()
+        } else {
+          const data = await res.json()
+          alert(data.error || 'เกิดข้อผิดพลาด')
+        }
       }
     } catch (error) {
       alert('ไม่สามารถบันทึกข้อมูลได้')

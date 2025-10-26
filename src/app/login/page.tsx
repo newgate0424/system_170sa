@@ -25,8 +25,8 @@ export default function LoginPage() {
         const data = await res.json()
         
         if (data.user) {
-          // User is already logged in, redirect to dashboard
-          router.push('/dashboard')
+          // User is already logged in, redirect to overview
+          router.push('/overview')
           return
         }
       } catch (error) {
@@ -59,8 +59,8 @@ export default function LoginPage() {
         return
       }
 
-      // Redirect to dashboard
-      router.push('/dashboard')
+      // Redirect to overview
+      router.push('/overview')
       router.refresh()
     } catch (err) {
       setError('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้')

@@ -15,6 +15,11 @@ import {
   FileSpreadsheet,
   RefreshCw,
   CreditCard,
+  UsersRound,
+  UserCheck,
+  Monitor,
+  TrendingUp,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/contexts/sidebar-context'
@@ -38,27 +43,42 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
+    title: 'nav.overview',
+    href: '/overview',
+    icon: UsersRound, // ไอคอนกลุ่มคน - เหมาะกับภาพรวมทีม
+  },
+  {
+    title: 'nav.adser',
+    href: '/overview/adser',
+    icon: UserCheck, // ไอคอนบุคคลเดียว - เหมาะกับประสิทธิภาพรายบุคคล
+  },
+  {
     title: 'nav.dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
   },
   {
-    title: 'Adser',
-    href: '/adser',
-    icon: Activity,
-  },
-    {
-    title: 'Overview',
-    href: '/overview',
-    icon: FileSpreadsheet,
+    title: 'nav.monitor',
+    href: '/monitor',
+    icon: Monitor,
   },
   {
-    title: 'Card Maker',
+    title: 'nav.content',
+    href: '/content',
+    icon: FileText,
+  },
+  {
+    title: 'nav.kpiAdser',
+    href: '/kpi-adser',
+    icon: TrendingUp,
+  },
+  {
+    title: 'nav.cardMaker',
     href: '/card-maker',
     icon: CreditCard,
   },
   {
-    title: 'Sync Data',
+    title: 'nav.sync',
     href: '/sync',
     icon: RefreshCw,
     adminOnly: true,

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/auth'
 
 // GET - ดึงกฎทั้งหมด (หรือกรองตาม team/column)
 export async function GET(request: NextRequest) {
   try {
+    // ตรวจสอบ authentication
+    await requireAuth();
+    
     const searchParams = request.nextUrl.searchParams
     const team = searchParams.get('team')
     const column = searchParams.get('column')
@@ -26,6 +30,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(rules)
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
     console.error('Error fetching color rules:', error)
     return NextResponse.json(
       { error: 'Failed to fetch color rules', message: error.message },
@@ -37,6 +44,9 @@ export async function GET(request: NextRequest) {
 // POST - สร้างกฎใหม่
 export async function POST(request: NextRequest) {
   try {
+    // ตรวจสอบ authentication
+    await requireAuth();
+    
     const body = await request.json()
     const {
       team,
@@ -84,6 +94,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(rule, { status: 201 })
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
     console.error('Error creating color rule:', error)
     return NextResponse.json(
       { error: 'Failed to create color rule', message: error.message },

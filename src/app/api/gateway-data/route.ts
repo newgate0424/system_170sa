@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    // ตรวจสอบ authentication
+    await requireAuth();
+    
     const searchParams = request.nextUrl.searchParams
     const team = searchParams.get('team')
     const adser = searchParams.get('adser')
@@ -289,6 +293,9 @@ export async function GET(request: NextRequest) {
       aggregated: !adser && !!team, // บอกว่าข้อมูลถูกรวมแล้วหรือไม่
     })
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
     console.error('API Error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to fetch data' },

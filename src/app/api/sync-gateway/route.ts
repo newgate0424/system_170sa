@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/auth'
 
 // ชื่อ sheets ที่ต้องการ sync (ตามทีม)
 const TEAM_SHEETS = [
@@ -168,6 +169,9 @@ async function syncSheetData(sheetName: string) {
 // API Route Handler
 export async function POST(request: NextRequest) {
   try {
+    // ตรวจสอบ authentication สำหรับ manual sync
+    await requireAuth();
+    
     const body = await request.json()
     const { sheets } = body
 
@@ -196,6 +200,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(summary)
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
     console.error('❌ Sync error:', error)
     return NextResponse.json(
       { success: false, error: error.message },
@@ -207,14 +214,14 @@ export async function POST(request: NextRequest) {
 // GET: เรียก sync ด้วย GET method (สำหรับ cron job)
 export async function GET(request: NextRequest) {
   try {
-    // ตรวจสอบ API key จาก query parameter (optional - เพิ่มความปลอดภัย)
+    // ตรวจสอบ API key จาก query parameter หรือ header
     const searchParams = request.nextUrl.searchParams
-    const apiKey = searchParams.get('key')
+    const apiKey = searchParams.get('key') || request.headers.get('x-api-key')
     
-    // ถ้าต้องการใช้ API key ให้ uncomment บรรทัดนี้
-    // if (apiKey !== process.env.SYNC_API_KEY) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    // }
+    // ตรวจสอบ API key (ต้องตรงกับที่ตั้งไว้ใน environment variable)
+    if (!apiKey || apiKey !== process.env.SYNC_API_KEY) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     console.log('🔄 Starting auto-sync from cron job...')
 

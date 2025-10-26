@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
 
 const FALLBACK_RATE = 36.5; // THB per USD
 
 export async function GET() {
   try {
+    // ตรวจสอบว่ามี session หรือไม่ (optional - อนุญาตให้เรียกได้โดยไม่ login)
+    // const session = await getSession();
+    // if (!session) {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // }
+    
     // ลองดึงจาก ExchangeRate-API (ฟรี, ไม่ต้อง API key)
     const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD', {
       next: { revalidate: 3600 } // Cache 1 ชั่วโมง

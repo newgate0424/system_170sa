@@ -69,7 +69,13 @@ export async function GET() {
         })),
       },
     })
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 })
+    }
+    if (error.message === 'Forbidden') {
+      return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 })
+    }
     console.error('Failed to get system stats:', error)
     return NextResponse.json(
       { error: 'Failed to get system stats' },

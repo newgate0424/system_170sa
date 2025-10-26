@@ -72,6 +72,22 @@ model UserSettings {
   @@index([userId])
 }
 
+model UserPreferences {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  sidebarSettings     String?  @db.Text // JSON
+  themeSettings       String?  @db.Text // JSON
+  filterSettings      String?  @db.Text // JSON
+  columnVisibility    String?  @db.Text // JSON
+  columnWidths        String?  @db.Text // JSON
+  colorConfiguration  String?  @db.Text // JSON
+  tableSettings       String?  @db.Text // JSON
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@index([userId])
+}
+
 model ActivityLog {
   id          String   @id @default(cuid())
   userId      String
@@ -206,4 +222,54 @@ model GatewayData {
   @@index([date])
   @@index([sheetName])
   @@index([syncedAt])
+}
+
+// Model สำหรับเก็บข้อมูล Campaign/Monitor (สำหรับหน้า Monitor)
+model CampaignData {
+  id             String   @id @default(cuid())
+  adser          String?  // ชื่อพนักงาน
+  adid           String   @unique // Facebook Ad ID (ต้อง unique)
+  pageid         String?  // Facebook Page ID
+  page           String?  // ชื่อเพจ
+  content        String?  @db.Text // เนื้อหาโฆษณา
+  cookie         String?  // Cookie
+  target         String?  // เป้าหมาย
+  not_target     String?  // ไม่เป้าหมาย
+  budget         String?  // งบประมาณ
+  note           String?  @db.Text // หมายเหตุ
+  status         String?  // สถานะ (Active, Paused, etc.)
+  start          String?  // วันที่เริ่ม
+  off            String?  // วันที่หยุด
+  captions       String?  @db.Text // คำบรรยาย
+  card           String?  // การ์ด
+  timezone       String?  // เขตเวลา
+  type_time      String?  // ประเภทเวลา
+  team           String?  // ทีม
+  total_card     Int?     // จำนวนการ์ดทั้งหมด
+  card_num       Int?     // หมายเลขการ์ด
+  total_message  Int?     // จำนวนข้อความทั้งหมด
+  meta_message   Int?     // ข้อความจาก Meta
+  message        Int?     // ข้อความ
+  register       Int?     // ลงทะเบียน
+  deposit        Float?   // ยอดฝาก
+  cost           Float?   // ค่าใช้จ่าย
+  turnover       Float?   // ยอดหมุนเวียน
+  total_user     Int?     // จำนวนผู้ใช้ทั้งหมด
+  silent         Int?     // ทักเงียบ
+  duplicate      Int?     // ทักซ้ำ
+  has_account    Int?     // มียูส
+  spammer        Int?     // ก่อกวน
+  blocked        Int?     // บล็อก
+  under_18       Int?     // อายุต่ำกว่า 18
+  over_50        Int?     // อายุเกิน 50
+  foreigner      Int?     // ต่างชาติ
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@index([adser])
+  @@index([team])
+  @@index([status])
+  @@index([start])
+  @@index([adid])
+  @@index([pageid])
 }
