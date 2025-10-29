@@ -71,26 +71,26 @@ Header: x-api-key: newgate-sync-now
 **ไฟล์ .env.local ใหม่:**
 ```bash
 # Database URLs
-ADSER_DATABASE_URL= "mysql://sacom_new:sRR10s47dfersl@103.80.48.25:3306/170sa"
-DATABASE_URL= "mysql://sacom_newgate:ads170sa883@103.80.48.25:3306/admin_auth"
+ADSER_DATABASE_URL= "mysql://[username]:[password]@[host]:[port]/[database]"
+DATABASE_URL= "mysql://[username]:[password]@[host]:[port]/[database]"
 
 # NextAuth Configuration
-NEXTAUTH_SECRET= "b1g+H7iP5tYq/N8dK3sA2vL9wXzF6jR0cE4mG1uV7o="
-NEXTAUTH_URL= "http://170sa.com"
+NEXTAUTH_SECRET= "[your-secret-key-here]"
+NEXTAUTH_URL= "http://your-domain.com"
 
 # JWT Configuration (used by auth.ts)
-JWT_SECRET= "b1g+H7iP5tYq/N8dK3sA2vL9wXzF6jR0cE4mG1uV7o="
+JWT_SECRET= "[same-as-nextauth-secret]"
 
 # Exchange Rate API
-EXCHANGE_RATE_API_KEY= "531f86c756c6b290472d9f45"
-EXCHANGE_API_URL= "https://v6.exchangerate-api.com/v6/531f86c756c6b290472d9f45/latest/USD"
+EXCHANGE_RATE_API_KEY= "[your-api-key]"
+EXCHANGE_API_URL= "https://v6.exchangerate-api.com/v6/[your-api-key]/latest/USD"
 
 # Google Sheets API
-GOOGLE_API_KEY= "AIzaSyAMwdqaWNpnFpeLOoq8kufa_gsDfqAqF8s"
-GOOGLE_SHEET_ID= "15yR37dqHgRKHL3hfgO-QKvbyOWlgJaWo3dzQjJGJBLM"
+GOOGLE_API_KEY= "[your-google-api-key]"
+GOOGLE_SHEET_ID= "[your-sheet-id]"
 
 # Sync API Protection (for cron job)
-SYNC_API_KEY= "newgate-sync-now"
+SYNC_API_KEY= "[your-sync-api-key]"
 ```
 
 ---
