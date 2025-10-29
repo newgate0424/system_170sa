@@ -68,33 +68,6 @@ Header: x-api-key: newgate-sync-now
 - ❌ `GOOGLE_CLIENT_EMAIL` - ไม่ได้ใช้ในโค้ด
 - ❌ `JWT_SECRET= "changeme"` - ซ้ำกับ `NEXTAUTH_SECRET` (รวมเป็นตัวเดียว)
 
-**ไฟล์ .env.local ใหม่:**
-```bash
-# Database URLs
-ADSER_DATABASE_URL= "mysql://sacom_new:sRR10s47dfersl@103.80.48.25:3306/170sa"
-DATABASE_URL= "mysql://sacom_newgate:ads170sa883@103.80.48.25:3306/admin_auth"
-
-# NextAuth Configuration
-NEXTAUTH_SECRET= "b1g+H7iP5tYq/N8dK3sA2vL9wXzF6jR0cE4mG1uV7o="
-NEXTAUTH_URL= "http://170sa.com"
-
-# JWT Configuration (used by auth.ts)
-JWT_SECRET= "b1g+H7iP5tYq/N8dK3sA2vL9wXzF6jR0cE4mG1uV7o="
-
-# Exchange Rate API
-EXCHANGE_RATE_API_KEY= "531f86c756c6b290472d9f45"
-EXCHANGE_API_URL= "https://v6.exchangerate-api.com/v6/531f86c756c6b290472d9f45/latest/USD"
-
-# Google Sheets API
-GOOGLE_API_KEY= "AIzaSyAMwdqaWNpnFpeLOoq8kufa_gsDfqAqF8s"
-GOOGLE_SHEET_ID= "15yR37dqHgRKHL3hfgO-QKvbyOWlgJaWo3dzQjJGJBLM"
-
-# Sync API Protection (for cron job)
-SYNC_API_KEY= "newgate-sync-now"
-```
-
----
-
 ## 📋 รายละเอียดการแก้ไขแต่ละไฟล์
 
 ### ไฟล์ที่แก้ไข:
