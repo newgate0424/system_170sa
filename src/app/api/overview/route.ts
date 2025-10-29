@@ -156,7 +156,7 @@ export async function GET(req: NextRequest) {
         const plannedSpendPerDay = parseNumber(record.plannedSpendPerDay);
         const spend = parseNumber(record.spend);
         const deposits = parseNumber(record.topUp);
-        const newPlayerRevenue = parseNumber(record.newPlayerRevenueTeam);
+        const newPlayerRevenue = parseNumber(record.newPlayerRevenueAdser);
         const pageBlocks7d = parseNumber(record.pageBlocks7Days);
         const pageBlocks30d = parseNumber(record.pageBlocks30Days);
         const silent = parseNumber(record.silent);
