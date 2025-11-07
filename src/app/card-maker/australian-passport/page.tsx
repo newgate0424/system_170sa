@@ -165,7 +165,7 @@ export default function MalaysiaVisaPage() {
         bgImage.onload = () => {
           ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
         };
-        bgImage.src = '/card/my/Australian Passport.png';
+        bgImage.src = '/card/my/Malaysia visa.png';
       } catch (error) {
         console.error('Error loading template:', error);
       }
@@ -256,17 +256,17 @@ export default function MalaysiaVisaPage() {
       await new Promise<void>((resolve, reject) => {
         cardTemplate.onload = () => resolve();
         cardTemplate.onerror = () => reject(new Error('Failed to load template'));
-        cardTemplate.src = '/card/my/Australian Passport.png';
+        cardTemplate.src = '/card/my/Malaysia visa.png';
       });
 
       ctx.drawImage(cardTemplate, 0, 0, canvas.width, canvas.height);
 
-      // เพิ่มเอฟเฟกต์การสแกนที่สมจริง (subtle noise/grain)
+      // เพิ่มเอฟเฟกต์การสแกนที่สมจริงแบบละเอียด (subtle noise/grain)
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
       for (let i = 0; i < data.length; i += 4) {
-        // เพิ่ม subtle grain (±2 ในแต่ละ channel)
-        const noise = (Math.random() - 0.5) * 2;
+        // เพิ่ม subtle grain แบบละเอียดมาก (±0.8 ในแต่ละ channel)
+        const noise = (Math.random() - 0.5) * 0.8;
         data[i] = Math.min(255, Math.max(0, data[i] + noise));     // R
         data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise)); // G
         data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise)); // B
@@ -282,8 +282,8 @@ export default function MalaysiaVisaPage() {
       
       const baseFont = '"OCR-B", "Courier New", monospace';
       
-      // สร้าง micro-variations สำหรับความสมจริง (±0.5px)
-      const microShift = () => (Math.random() - 0.5) * 0.8;
+      // สร้าง micro-variations สำหรับความสมจริง (ไม่ใช้ micro-shift เพื่อให้ตำแหน่งแม่นยำ)
+      const microShift = () => 0;
 
       // ========================================
       // Photo - รูปถ่าย (ด้านซ้ายบน)
@@ -291,9 +291,10 @@ export default function MalaysiaVisaPage() {
       // ขนาด Width, Height: (620, 770)
       // หมายเหตุ: รูปจะถูก scale ให้เต็มกรอบอัตโนมัติ พร้อมเอฟเฟกต์ภาพถ่าย
       // ========================================
-      if (cardData.photo && cardData.photo.startsWith('data:')) {
+      if (cardData.photo) {
         try {
           const photo = new Image();
+          photo.crossOrigin = 'anonymous'; // รองรับ external URLs
           await new Promise<void>((resolve, reject) => {
             photo.onload = () => resolve();
             photo.onerror = () => reject(new Error('Failed to load photo'));
@@ -308,11 +309,11 @@ export default function MalaysiaVisaPage() {
           ctx.clip();
           
           // สร้างเอฟเฟกต์ภาพถ่ายที่สมจริง
-          // 1. ตั้งค่าความโปร่งของรูป
-          ctx.globalAlpha = 0.78;
+          // 1. ตั้งค่าความโปร่งของรูป (ปรับเป็น 0.85 ให้โปร่งมากขึ้น)
+          ctx.globalAlpha = 0.85;
           
-          // 2. เพิ่ม subtle blur เพื่อให้ดูเหมือนสแกน
-          ctx.filter = 'blur(0.3px) contrast(1.05) brightness(0.98)';
+          // 2. เพิ่ม subtle blur เพื่อให้ดูเหมือนสแกน (ลด blur ลง)
+          ctx.filter = 'blur(0.15px) contrast(1.02) brightness(0.99)';
           
           // คำนวณให้รูปเต็มกรอบ
           const scale = Math.max(photoW / photo.width, photoH / photo.height);
@@ -324,7 +325,7 @@ export default function MalaysiaVisaPage() {
           ctx.drawImage(photo, offsetX, offsetY, scaledW, scaledH);
           
           // 3. เพิ่มเลเยอร์โปร่งบางๆ เพื่อความสมจริง
-          ctx.globalAlpha = 0.03;
+          ctx.globalAlpha = 0.02;
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(photoX, photoY, photoW, photoH);
           
@@ -338,16 +339,23 @@ export default function MalaysiaVisaPage() {
       }
 
       // ========================================
-      // กำหนดฟ้อนต์และสีพื้นฐาน พร้อมเอฟเฟกต์สมจริง
+      // กำหนดฟ้อนต์และสีพื้นฐาน + เอฟเฟกต์การถ่ายภาพ
       // ========================================
-      // เพิ่ม subtle shadow เพื่อความลึก
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-      ctx.shadowBlur = 0.5;
-      ctx.shadowOffsetX = 0.3;
-      ctx.shadowOffsetY = 0.3;
       
-      // สีหมึกที่ดูเหมือนพิมพ์จริง
-      ctx.fillStyle = '#0a0a0a';
+      // เพิ่มเอฟเฟกต์ของการถ่ายภาพด้วยกล้อง
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      
+      // ใช้ globalAlpha เพื่อให้ text ดูเบาลงเล็กน้อยเหมือนถ่ายรูป
+      ctx.globalAlpha = 0.92;
+      
+      // เพิ่ม slight blur เหมือนถ่ายรูปด้วยกล้อง
+      ctx.filter = 'blur(0.4px) contrast(0.98)';
+      
+      // สีหมึกดำที่ดูเหมือนถ่ายรูปจริง (ไม่ใช่สีดำสนิท)
+      ctx.fillStyle = '#1a1a1a';
       
       // ========================================
       // Type (P) - ตัว P มุมบนซ้าย
@@ -488,7 +496,7 @@ export default function MalaysiaVisaPage() {
       // หมายเหตุ: ข้อมูล MRZ จะถูกแปลงเป็นรูปแบบมาตรฐาน
       // ========================================
       ctx.font = `575 110px ${baseFont}`;
-      ctx.fillStyle = '#000000';
+      ctx.fillStyle = '#1a1a1a';
       
       // MRZ Line 1
       const mrzLine1 = `P<AUS${cardData.surname.toUpperCase().replace(/\s/g, '')}<<${cardData.givenNames.toUpperCase().replace(/\s/g, '')}${'<'.repeat(44)}`.substring(0, 44);
@@ -532,14 +540,18 @@ export default function MalaysiaVisaPage() {
         // บันทึกสถานะ canvas
         ctx.save();
         
-        // ปรับเงาให้บางลง
-        ctx.shadowColor = 'rgba(0, 0, 128, 0.12)';
-        ctx.shadowBlur = 0.4;
-        ctx.shadowOffsetX = 0.1;
-        ctx.shadowOffsetY = 0.1;
+        // ไม่ใช้เงาสำหรับลายเซ็นเพื่อให้เป็นส่วนหนึ่งของเอกสาร
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        
+        // เอฟเฟกต์การถ่ายภาพสำหรับลายเซ็น
+        ctx.filter = 'blur(0.5px) contrast(0.96)';
+        ctx.globalAlpha = 0.88;
         
         ctx.font = `120px "Texas-Hero", cursive`;
-        ctx.fillStyle = '#1a1a5a'; // สีน้ำเงินเข้มของปากกา
+        ctx.fillStyle = '#1a1a6a'; // สีน้ำเงินเข้มของปากกาที่ดูเหมือนถ่ายรูป
         
         // ย้ายจุดศูนย์กลางไปที่ตำแหน่งลายเซ็น
         const sigX = 2300;
@@ -550,24 +562,28 @@ export default function MalaysiaVisaPage() {
         ctx.rotate(-0.09); // -0.09 radians ≈ -5 องศา
         
         // วาดลายเซ็นที่ตำแหน่ง 0,0 (เพราะเราย้าย translate แล้ว)
-        ctx.globalAlpha = 0.95;
         ctx.fillText(cardData.signature, 0, 0);
-        ctx.globalAlpha = 1.0;
         
         // คืนค่าสถานะ canvas (รวมทั้งรีเซ็ตเงาและการหมุน)
         ctx.restore();
       }
 
       // ========================================
-      // ปรับแต่งสุดท้ายเพื่อความสมจริง
+      // ปรับแต่งสุดท้ายเพื่อให้ดูเหมือนถ่ายด้วยกล้อง
       // ========================================
-      // เพิ่ม subtle color shift และ aging effect
+      // รีเซ็ต filter ก่อนประมวลผลรูปภาพ
+      ctx.filter = 'none';
+      ctx.globalAlpha = 1.0;
+      
+      // เพิ่มเอฟเฟกต์การถ่ายภาพด้วยกล้อง
       const finalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const finalData = finalImageData.data;
       for (let i = 0; i < finalData.length; i += 4) {
-        // เพิ่มสี warm tone เล็กน้อย (เหมือนกระดาษเก่า)
-        finalData[i] = Math.min(255, finalData[i] + 1);     // R +1
-        finalData[i + 1] = Math.min(255, finalData[i + 1] + 0.5); // G +0.5
+        // เพิ่ม subtle noise เหมือนกล้องถ่ายรูป
+        const noise = (Math.random() - 0.5) * 3;
+        finalData[i] = Math.min(255, Math.max(0, finalData[i] + noise));     // R
+        finalData[i + 1] = Math.min(255, Math.max(0, finalData[i + 1] + noise)); // G
+        finalData[i + 2] = Math.min(255, Math.max(0, finalData[i + 2] + noise)); // B
         // B ไม่เปลี่ยน
       }
       ctx.putImageData(finalImageData, 0, 0);
@@ -605,7 +621,7 @@ export default function MalaysiaVisaPage() {
       <Card className="max-w-7xl mx-auto">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Australian Passport Maker - เครื่องมือสร้างวีซ่ามาเลเซีย</CardTitle>
+            <CardTitle>Australian Passport</CardTitle>
             <Link href="/card-maker">
               <Button variant="outline" className="flex items-center gap-2">
                 <ArrowLeft className="w-4 h-4" />
@@ -618,7 +634,7 @@ export default function MalaysiaVisaPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left - Canvas */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">ตัวอย่างวีซ่ามาเลเซีย</h3>
+              <h3 className="text-lg font-semibold">ตัวอย่าง</h3>
               <canvas
                 ref={canvasRef}
                 width={3543}
@@ -634,7 +650,7 @@ export default function MalaysiaVisaPage() {
 
             {/* Right - Form */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">ข้อมูลวีซ่า</h3>
+              <h3 className="text-lg font-semibold">ข้อมูล</h3>
               
               <div className="grid grid-cols-2 gap-3">
                 <div>

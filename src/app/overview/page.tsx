@@ -1070,6 +1070,172 @@ export default function OverviewPage() {
       return sortedData.filter(d => !dayjs(d.date).isAfter(dayjs(), 'day'));
     };
 
+    // ✅ ฟังก์ชันคำนวณ ratio จาก numerator และ denominator รายวัน (สำหรับกราฟ daily)
+    const calculateDailyRatio = (numeratorKey: keyof TeamMetric, denominatorKey: keyof TeamMetric) => {
+      const dateMap = new Map<string, Map<string, { numerator: number, denominator: number }>>();
+      
+      graphRawData.forEach(team => {
+        const numeratorData = team[numeratorKey] as DailyDataPoint[] || [];
+        const denominatorData = team[denominatorKey] as DailyDataPoint[] || [];
+        
+        // สร้าง map ของ denominator
+        const denominatorMap = new Map<string, number>();
+        denominatorData.forEach(d => {
+          denominatorMap.set(d.date, d.value);
+        });
+        
+        // วนลูป numerator
+        numeratorData.forEach(day => {
+          const denominatorValue = denominatorMap.get(day.date) || 0;
+          
+          if (!dateMap.has(day.date)) {
+            dateMap.set(day.date, new Map());
+          }
+          
+          const teamMap = dateMap.get(day.date)!;
+          if (!teamMap.has(team.team_name)) {
+            teamMap.set(team.team_name, { numerator: 0, denominator: 0 });
+          }
+          
+          // รวม numerator และ denominator ของคนในทีมเดียวกัน
+          const entry = teamMap.get(team.team_name)!;
+          entry.numerator += day.value;
+          entry.denominator += denominatorValue;
+        });
+      });
+
+      // คำนวณ ratio
+      const result: TransformedChartData[] = [];
+      dateMap.forEach((teamMap, date) => {
+        const dataPoint: TransformedChartData = { date };
+        teamMap.forEach((entry, teamName) => {
+          const ratio = entry.denominator > 0 ? entry.numerator / entry.denominator : 0;
+          dataPoint[teamName] = ratio;
+        });
+        result.push(dataPoint);
+      });
+
+      const sortedData = result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      return sortedData.filter(d => !dayjs(d.date).isAfter(dayjs(), 'day'));
+    };
+
+    // ✅ ฟังก์ชันคำนวณค่าเฉลี่ยสำหรับ ratio metrics (CPM, Cost per Deposit, Cover)
+    const transformDataAverage = (dataKey: keyof TeamMetric, monthlyAgg: 'sum' | 'last') => {
+      const dateMap = new Map<string, Map<string, number[]>>();
+      
+      graphRawData.forEach(team => {
+        let processedData = team[dataKey] as DailyDataPoint[] || [];
+        
+        // สำหรับ monthly view ให้ aggregate
+        if (graphView === 'monthly' && Array.isArray(processedData)) {
+          processedData = aggregateMonthly(processedData, monthlyAgg);
+        }
+        
+        // วนลูปข้อมูลแต่ละวัน
+        if (Array.isArray(processedData)) {
+          processedData.forEach(day => {
+            if (!dateMap.has(day.date)) {
+              dateMap.set(day.date, new Map());
+            }
+            
+            const teamMap = dateMap.get(day.date)!;
+            if (!teamMap.has(team.team_name)) {
+              teamMap.set(team.team_name, []);
+            }
+            
+            // เก็บค่าของแต่ละคนในทีม
+            teamMap.get(team.team_name)!.push(day.value);
+          });
+        }
+      });
+
+      // คำนวณค่าเฉลี่ยสำหรับแต่ละวันและแต่ละทีม
+      const result: TransformedChartData[] = [];
+      dateMap.forEach((teamMap, date) => {
+        const dataPoint: TransformedChartData = { date };
+        teamMap.forEach((values, teamName) => {
+          // คำนวณค่าเฉลี่ยจากทุกคนในทีม
+          const average = values.reduce((sum, val) => sum + val, 0) / values.length;
+          dataPoint[teamName] = average;
+        });
+        result.push(dataPoint);
+      });
+
+      const sortedData = result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      return sortedData.filter(d => !dayjs(d.date).isAfter(dayjs(), 'day'));
+    };
+
+    // ✅ ฟังก์ชันคำนวณ ratio แบบ cumulative (สำหรับ CPM และ Cost per Deposit ให้ตรงกับตาราง)
+    const calculateCumulativeRatio = (numeratorKey: keyof TeamMetric, denominatorKey: keyof TeamMetric) => {
+      const dateMap = new Map<string, Map<string, { numerator: number, denominator: number }>>();
+      
+      graphRawData.forEach(team => {
+        const numeratorData = team[numeratorKey] as DailyDataPoint[] || [];
+        const denominatorData = team[denominatorKey] as DailyDataPoint[] || [];
+        
+        // สร้าง map ของ denominator สำหรับเข้าถึงเร็ว
+        const denominatorMap = new Map<string, number>();
+        denominatorData.forEach(d => {
+          denominatorMap.set(d.date, d.value);
+        });
+        
+        // เรียงลำดับวันที่
+        const sortedNumerator = [...numeratorData].sort((a, b) => 
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+        
+        // คำนวณแบบ cumulative (รวมตั้งแต่วันแรกของเดือน)
+        let cumulativeByMonth = new Map<string, { numerator: number, denominator: number }>();
+        
+        sortedNumerator.forEach(day => {
+          const monthKey = dayjs(day.date).format('YYYY-MM');
+          const denominatorValue = denominatorMap.get(day.date) || 0;
+          
+          // ถ้าเป็นวันแรกของเดือนใหม่ ให้รีเซ็ต
+          if (!cumulativeByMonth.has(monthKey)) {
+            cumulativeByMonth.set(monthKey, { numerator: 0, denominator: 0 });
+          }
+          
+          // สะสมค่า
+          const monthData = cumulativeByMonth.get(monthKey)!;
+          monthData.numerator += day.value;
+          monthData.denominator += denominatorValue;
+          
+          // เก็บค่า cumulative ลงในแต่ละวัน
+          if (!dateMap.has(day.date)) {
+            dateMap.set(day.date, new Map());
+          }
+          
+          const teamMap = dateMap.get(day.date)!;
+          if (!teamMap.has(team.team_name)) {
+            teamMap.set(team.team_name, { numerator: 0, denominator: 0 });
+          }
+          
+          // รวมค่าของคนในทีมเดียวกัน
+          const entry = teamMap.get(team.team_name)!;
+          entry.numerator += monthData.numerator;
+          entry.denominator += monthData.denominator;
+        });
+      });
+
+      // คำนวณ ratio สำหรับแต่ละวันและแต่ละทีม
+      const result: TransformedChartData[] = [];
+      dateMap.forEach((teamMap, date) => {
+        const dataPoint: TransformedChartData = { date };
+        teamMap.forEach((entry, teamName) => {
+          // หาจำนวนคนในทีม
+          const teamMembers = graphRawData.filter(t => t.team_name === teamName).length;
+          // คำนวณ ratio จาก cumulative sum / number of team members
+          const ratio = entry.denominator > 0 ? entry.numerator / entry.denominator / teamMembers : 0;
+          dataPoint[teamName] = ratio;
+        });
+        result.push(dataPoint);
+      });
+
+      const sortedData = result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      return sortedData.filter(d => !dayjs(d.date).isAfter(dayjs(), 'day'));
+    };
+
     const calculateMonthlyRatio = (numeratorKey: keyof TeamMetric, denominatorKey: keyof TeamMetric) => {
         const dateMap = new Map<string, TransformedChartData>();
 
@@ -1116,12 +1282,12 @@ export default function OverviewPage() {
         cover: transformData('one_dollar_per_cover_daily', 'last'),
       });
     } else {
-      // Daily view - แสดงค่าประจำวันตามที่เลือกดู
+      // Daily view - ใช้ calculateDailyRatio (รวม spend และ inquiries/deposits ของทีมในแต่ละวัน)
       setChartData({
-        cpm: transformData('cpm_cost_per_inquiry_daily', 'last'),
-        costPerDeposit: transformData('cost_per_deposit_daily', 'last'),
+        cpm: calculateDailyRatio('actual_spend_daily', 'total_inquiries_daily'),
+        costPerDeposit: calculateDailyRatio('actual_spend_daily', 'deposits_count_daily'),
         deposits: transformData('deposits_count_daily', 'last'),
-        cover: transformData('one_dollar_per_cover_daily', 'last'),
+        cover: transformDataAverage('one_dollar_per_cover_daily', 'last'),
       });
     }
   }, [graphRawData, graphView]);

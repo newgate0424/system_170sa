@@ -92,9 +92,9 @@ export default function CardMaker() {
                   />
                 </div>
                 <div className="p-6 text-center">
-                  <h2 className="text-xl font-bold mb-2">�� Australian Passport</h2>
+                  <h2 className="text-xl font-bold mb-2">🇦🇺 Australian Passport</h2>
                   <p className="text-gray-600 text-sm mb-4">สร้างพาสปอร์ตออสเตรเลียแบบจำลอง</p>
-                  <Link href="/card-maker/malaysia-visa">
+                  <Link href="/card-maker/australian-passport">
                     <Button className="w-full text-lg py-2 bg-green-600 hover:bg-green-700">
                       เริ่มสร้าง
                     </Button>
