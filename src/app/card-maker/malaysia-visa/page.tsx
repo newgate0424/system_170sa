@@ -25,7 +25,7 @@ if (typeof window !== 'undefined') {
   });
 }
 
-interface MalaysiaVisaData {
+interface AustralianPassportData {
   passportNo: string;
   surname: string;
   givenNames: string;
@@ -93,7 +93,7 @@ export default function MalaysiaVisaPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [cardData, setCardData] = useState<MalaysiaVisaData>({
+  const [cardData, setCardData] = useState<AustralianPassportData>({
     passportNo: '',
     surname: '',
     givenNames: '',
@@ -165,7 +165,7 @@ export default function MalaysiaVisaPage() {
         bgImage.onload = () => {
           ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
         };
-        bgImage.src = '/card/my/Malaysia visa.png';
+        bgImage.src = '/card/my/Australian Passport.png';
       } catch (error) {
         console.error('Error loading template:', error);
       }
@@ -218,7 +218,7 @@ export default function MalaysiaVisaPage() {
     });
   };
 
-  const handleInputChange = (field: keyof MalaysiaVisaData, value: string) => {
+  const handleInputChange = (field: keyof AustralianPassportData, value: string) => {
     setCardData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -256,7 +256,7 @@ export default function MalaysiaVisaPage() {
       await new Promise<void>((resolve, reject) => {
         cardTemplate.onload = () => resolve();
         cardTemplate.onerror = () => reject(new Error('Failed to load template'));
-        cardTemplate.src = '/card/my/Malaysia visa.png';
+        cardTemplate.src = '/card/my/Australian Passport.png';
       });
 
       ctx.drawImage(cardTemplate, 0, 0, canvas.width, canvas.height);
@@ -605,7 +605,7 @@ export default function MalaysiaVisaPage() {
       <Card className="max-w-7xl mx-auto">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Malaysia Visa Maker - เครื่องมือสร้างวีซ่ามาเลเซีย</CardTitle>
+            <CardTitle>Australian Passport Maker - เครื่องมือสร้างวีซ่ามาเลเซีย</CardTitle>
             <Link href="/card-maker">
               <Button variant="outline" className="flex items-center gap-2">
                 <ArrowLeft className="w-4 h-4" />
