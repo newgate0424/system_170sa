@@ -81,6 +81,28 @@ export default function CardMaker() {
               </CardContent>
             </Card>
 
+            {/* Malaysia Visa Card */}
+            <Card className="hover:shadow-lg transition-all duration-300 border-2 hover:border-green-300 hover:scale-105 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="aspect-[3/2] bg-gradient-to-br from-green-50 to-green-100 p-4 flex items-center justify-center">
+                  <img 
+                    src="/card/my/Malaysia visa.png" 
+                    alt="Malaysia Visa" 
+                    className="w-full h-full object-contain rounded-md shadow-sm"
+                  />
+                </div>
+                <div className="p-6 text-center">
+                  <h2 className="text-xl font-bold mb-2">🇲🇾 Malaysia Visa</h2>
+                  <p className="text-gray-600 text-sm mb-4">สร้างวีซ่ามาเลเซียแบบจำลอง</p>
+                  <Link href="/card-maker/malaysia-visa">
+                    <Button className="w-full text-lg py-2 bg-green-600 hover:bg-green-700">
+                      เริ่มสร้าง
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
           </div>
         </CardContent>
       </Card>
