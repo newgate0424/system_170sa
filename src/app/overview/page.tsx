@@ -311,6 +311,7 @@ const GroupedChart = memo(({
           if (graphView === 'monthly') {
             targetMap.set(teamName, monthlyTarget);
           } else {
+            // สำหรับ daily view ให้แสดงเป้าประจำวัน
             targetMap.set(teamName, calculateDailyTarget(monthlyTarget, dayjs(dateForTarget).format('YYYY-MM-DD')));
           }
         }
@@ -1045,15 +1046,22 @@ export default function OverviewPage() {
       const dateMap = new Map<string, TransformedChartData>();
       graphRawData.forEach(team => {
         let processedData = team[dataKey] as DailyDataPoint[] || [];
+        
+        // สำหรับ monthly view ให้ aggregate
         if (graphView === 'monthly' && Array.isArray(processedData)) {
           processedData = aggregateMonthly(processedData, monthlyAgg);
         }
+        
+        // วนลูปข้อมูลแต่ละวัน
         if (Array.isArray(processedData)) {
           processedData.forEach(day => {
             if (!dateMap.has(day.date)) {
               dateMap.set(day.date, { date: day.date });
             }
-            dateMap.get(day.date)![team.team_name] = day.value;
+            
+            // ✅ รวมค่าของคนที่อยู่ในทีมเดียวกัน
+            const currentValue = dateMap.get(day.date)![team.team_name] || 0;
+            dateMap.get(day.date)![team.team_name] = currentValue + day.value;
           });
         }
       });
@@ -1108,10 +1116,11 @@ export default function OverviewPage() {
         cover: transformData('one_dollar_per_cover_daily', 'last'),
       });
     } else {
+      // Daily view - แสดงค่าประจำวันตามที่เลือกดู
       setChartData({
-        cpm: transformData('cpm_cost_per_inquiry_daily', 'sum'),
-        costPerDeposit: transformData('cost_per_deposit_daily', 'sum'),
-        deposits: transformData('deposits_count_daily', 'sum'),
+        cpm: transformData('cpm_cost_per_inquiry_daily', 'last'),
+        costPerDeposit: transformData('cost_per_deposit_daily', 'last'),
+        deposits: transformData('deposits_count_daily', 'last'),
         cover: transformData('one_dollar_per_cover_daily', 'last'),
       });
     }
